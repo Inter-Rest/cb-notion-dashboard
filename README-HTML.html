@@ -1,0 +1,40 @@
+
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Setup Guide — Chateau Bounce OS Dashboard</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Setup Guide — Chateau Bounce OS HTML Dashboard</h1>
+    <p class="small">This page explains how to wire your Notion links and (optionally) embed live metric views.</p>
+    <h2>1) Where to paste your Notion URLs</h2>
+    <p>Edit <code>assets/config.js</code> and paste your Notion page URLs:</p>
+<pre><code>window.CB_LINKS = {
+  prompts: "https://notion.so/your-prompt-library",
+  outreach: "https://notion.so/your-outreach",
+  inventory: "https://notion.so/your-inventory",
+  seo: "https://notion.so/your-seo",
+  perf: "https://notion.so/your-performance",
+  sops: "https://notion.so/your-sops",
+  automation: "https://notion.so/your-automation",
+  events: "https://notion.so/your-events",
+  training: "https://notion.so/your-training",
+  revenue: "https://notion.so/your-revenue",
+  metricActivePrompts: "https://notion.so/view-active-prompts",
+  metricHotLeads: "https://notion.so/view-hot-leads",
+  metricRevenueThisMonth: "https://notion.so/view-revenue-this-month"
+};</code></pre>
+
+    <h2>2) Hosting</h2>
+    <ul>
+      <li><b>WordPress:</b> Upload the folder to <code>/wp-content/uploads/os-dashboard/</code> and create a page using an HTML block that iframes <code>index.html</code>.</li>
+      <li><b>Static hosting:</b> Any static host (Netlify, Cloudflare Pages, S3) works. Upload the folder as-is.</li>
+    </ul>
+
+    <h2>3) Live Metrics (Simple Mode)</h2>
+    <p>Use filtered Notion views and paste their share URLs into config.js (metric keys). Clicking the metric tiles opens them.</p>
+
+    <h2>4) Upgrade to API metrics (Optional)</h2>
+    <p>Use Notion API + your database IDs to fetch counts/sums and inject into the three tiles.</p>
+  </div>
+</body></html>
