@@ -2,12 +2,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Fahkwang:wght@300;400;600&display=swap');
 
 :root{
-  --brand-blue:#D2DAE1;
-  --light-blue:#D9EAF8;
+  --brand-blue:#d2dae1;
+  --light-blue:#d9eaf8;
   --gold:#d4af37;
   --gray:#f5f5f5;
   --white:#ffffff;
-  --text:#1c1c1c;
+  --text:#4f4a55;
+  --peach:#ffe4cc;
+  --background:#f1ede7;
+  --heading:#aa93af;
+  --purple:#d8cfe1;
 }
 
 *{box-sizing:border-box}
@@ -25,25 +29,25 @@ html,body{margin:0;padding:0;background:#fff;color:var(--text);font-family:'Fahk
 .metric .label{font-size:13px;opacity:.7}
 .metric .value{font-size:28px;font-weight:600}
 .metric.light-blue{background:var(--light-blue)}
-.metric.gold{background:var(--gold);color:#2d2a17}
+.metric.gold{background:var(--peach);color:#2d2a17}
 .metric.blue{background:var(--brand-blue)}
 
 .grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px}
 @media(max-width:1024px){.grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:640px){.grid{grid-template-columns:repeat(2,1fr)}}
 
-.card{background:var(--white);border:2px solid var(--gold);border-radius:16px;padding:14px 12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.05);transition:transform .08s ease, box-shadow .08s ease}
+.card{background:var(--background);border:2px solid var(--gold);border-radius:16px;padding:14px 12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.05);transition:transform .08s ease, box-shadow .08s ease}
 .card:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.10)}
 .card .thumb{background:var(--gray);border-radius:10px;padding:10px;margin-bottom:10px;display:flex;align-items:center;justify-content:center;height:110px}
 .card .thumb img{max-width:80px;height:auto;display:block}
-.card .title{font-size:15px;font-weight:600;margin-bottom:6px}
-.card .desc{font-size:12px;opacity:.75;min-height:30px}
+.card .title{font-size:15px;font-weight:600;margin-bottom:6px;color: var(--heading)}
+.card .desc{font-size:12px;opacity:.75;min-height:30px;color: var(--heading)}
 
 .card.light-blue .thumb{background:var(--light-blue)}
 .card.blue .thumb{background:var(--brand-blue)}
-.card.gold .thumb{background:var(--gold)}
+.card.gold .thumb{background:var(--peach)}
 .card.gray .thumb{background:var(--gray)}
-.card.white .thumb{background:var(--white)}
+.card.white .thumb{background:var(--purple)}
 
 .footer{margin:32px 0 8px;opacity:.6;font-size:12px;text-align:center}
 
