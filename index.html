@@ -1,107 +1,50 @@
-
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Chateau Bounce — OS Dashboard</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chateau Bounce — OS</title>
   <link rel="stylesheet" href="styles.css">
-  <meta name="theme-color" content="#D9EAF8">
+  <script src="config.js" defer></script>
+  <script src="script.js" defer></script>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <div class="brand">
-        <img src="ai_prompt_library_96px.png" alt="Logo">
-        <div>
-          <h1>Chateau Bounce — OS</h1>
-          <div class="tagline">Luxury bounce houses & balloon styling • Snohomish + King County</div>
-        </div>
-      </div>
-      <div class="btn-row">
-        <a class="btn" href="#" onclick="window.print()">Print</a>
-        <a class="btn" href="README-HTML.html" target="_blank">Setup Guide</a>
-      </div>
-    </div>
+  <h1>Chateau Bounce — OS</h1>
+  <p>Luxury bounce houses & balloon styling • Snohomish + King County</p>
 
-    <!-- Quick Metrics -->
-    <div class="metrics">
-      <div class="metric light-blue" id="metric-prompts" title="Click to open filtered Notion view">
-        <div class="label">Active Prompts</div>
-        <div class="value">—</div>
-        <div class="small">Linked to AI Prompt Library</div>
-      </div>
-      <div class="metric gold" id="metric-hotleads" title="Click to open filtered Notion view">
-        <div class="label">Hot Leads</div>
-        <div class="value">—</div>
-        <div class="small">Replied or Converted</div>
-      </div>
-      <div class="metric blue" id="metric-revenue" title="Click to open filtered Notion view">
-        <div class="label">This Month’s Revenue</div>
-        <div class="value">$ —</div>
-        <div class="small">Sum of paid bookings</div>
-      </div>
-    </div>
+  <a href="#">Print Setup Guide</a>
+  <p>Active Prompts</p>
+  <hr>
+  <p>Linked to AI Prompt Library</p>
+  <p>Hot Leads</p>
+  <hr>
+  <p>Replied or Converted</p>
+  <p>This Month’s Revenue</p>
+  <p>$ —</p>
+  <p>Sum of paid bookings</p>
+  <img src="booking_%26_revenue_96px.png" alt="Bookings & Revenue">
 
-    <!-- Grid -->
-    <div class="grid" role="navigation" aria-label="Module navigation">
-      <a class="card light-blue" id="lnk-prompts" href="#" target="_blank" aria-label="AI Prompt Library">
-        <div class="thumb"><img src="ai_prompt_library_96px.png" alt="AI Prompt Library"></div>
-        <div class="title">AI Prompt Library</div>
-        <div class="desc">Reusable prompts, categorized & versioned</div>
-      </a>
-      <a class="card gold" id="lnk-outreach" href="#" target="_blank" aria-label="B2B Outreach Control Center">
-        <div class="thumb"><img src="b2b_outreach_96px.png" alt="B2B Outreach"></div>
-        <div class="title">B2B Outreach</div>
-        <div class="desc">Live hub for leads, assets, follow-ups</div>
-      </a>
-      <a class="card blue" id="lnk-inventory" href="#" target="_blank" aria-label="Inventory & Styling Catalog">
-        <div class="thumb"><img src="inventory_&_styling_catalog_96px.png" alt="Inventory & Styling"></div>
-        <div class="title">Inventory & Styling</div>
-        <div class="desc">Units, sizes, tiers, and photos</div>
-      </a>
-      <a class="card gray" id="lnk-seo" href="#" target="_blank" aria-label="SEO & Content Pipeline">
-        <div class="thumb"><img src="seo_&_content_pipeline_96px.png" alt="SEO & Content"></div>
-        <div class="title">SEO & Content</div>
-        <div class="desc">City pages, targets, status, URLs</div>
-      </a>
-      <a class="card white" id="lnk-perf" href="#" target="_blank" aria-label="Performance Optimization Playbook">
-        <div class="thumb"><img src="performance_optimization_96px.png" alt="Performance Optimization"></div>
-        <div class="title">Performance Optimization</div>
-        <div class="desc">LCP/CLS fixes and test results</div>
-      </a>
+  <h2><a href="#">AI Prompt Library</a></h2>
+  <p><a href="#">Reusable prompts, categorized & versioned</a></p>
+  <img src="ai_prompt_library_96px.png" alt="AI Prompt Library">
 
-      <a class="card light-blue" id="lnk-sops" href="#" target="_blank" aria-label="Client Experience SOPs">
-        <div class="thumb"><img src="client_sops_96px.png" alt="Client SOPs"></div>
-        <div class="title">Client SOPs</div>
-        <div class="desc">Step-by-step workflows for team</div>
-      </a>
-      <a class="card gold" id="lnk-automation" href="#" target="_blank" aria-label="Automation Blueprint Library">
-        <div class="thumb"><img src="automation_library_96px.png" alt="Automation Library"></div>
-        <div class="title">Automation Library</div>
-        <div class="desc">Zapier/IO flows with triggers</div>
-      </a>
-      <a class="card blue" id="lnk-events" href="#" target="_blank" aria-label="Client Event Templates">
-        <div class="thumb"><img src="client_event_templates_96px.png" alt="Client Event Templates"></div>
-        <div class="title">Client Event Templates</div>
-        <div class="desc">Per-event pages for ops</div>
-      </a>
-      <a class="card gray" id="lnk-training" href="#" target="_blank" aria-label="Team Training Hub">
-        <div class="thumb"><img src="team_training_hub_96px.png" alt="Team Training"></div>
-        <div class="title">Team Training Hub</div>
-        <div class="desc">Onboarding, videos, checklists</div>
-      </a>
-      <a class="card white" id="lnk-revenue" href="#" target="_blank" aria-label="Booking & Revenue Dashboard">
-        <div class="thumb"><img src="booking_&_revenue_96px.png" alt="Booking & Revenue"></div>
-        <div class="title">Booking & Revenue</div>
-        <div class="desc">Monthly & quarterly views</div>
-      </a>
-    </div>
+  <h2><a href="#">B2B Outreach</a></h2>
+  <p>Live hub for leads, assets, follow-ups</p>
+  <img src="b2b_outreach_96px.png" alt="B2B Outreach">
 
-    <div class="footer">© Chateau Bounce & Balloons — OS Dashboard</div>
-  </div>
+  <h2><a href="#">Inventory & Styling</a></h2>
+  <p>Units, sizes, tiers, and photos</p>
+  <img src="inventory_%26_styling_catalog_96px.png" alt="Inventory & Styling">
 
-  <script src="config.js"></script>
-  <script src="script.js"></script>
+  <h2><a href="#">SEO & Content</a></h2>
+  <p>City pages, targets, status, URLs</p>
+  <img src="seo_%26_content_pipeline_96px.png" alt="SEO & Content">
+
+  <h2><a href="#">Performance Optimization</a></h2>
+  <p>LCP/CLS fixes and test results</p>
+  <img src="performance_optimization_96px.png" alt="Performance Optimization">
+
+  <h2><a href="#">Team Training Hub</a></h2>
+  <img src="team_training_hub_96px.png" alt="Team Training">
 </body>
 </html>
