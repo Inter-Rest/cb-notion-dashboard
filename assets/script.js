@@ -1,26 +1,31 @@
-(function(){
+// assets/script.js
+document.addEventListener('DOMContentLoaded', function () {
   const L = window.CB_LINKS || {};
 
-  // normalize any URL from config: accept https:// or notion://
+  // Accept https:// or notion:// and produce both
   const norm = (url) => {
-    if (!url || url === '#') return { web:'#', app:null };
+    if (!url || url === '#') return { web: '#', app: null };
     if (url.startsWith('notion://')) {
-      return { web: url.replace('notion://','https://'), app: url };
+      return { web: url.replace('notion://', 'https://'), app: url };
     }
-    // default: web given
-    return { web: url, app: url.replace('https://www.notion.so/','notion://www.notion.so/') };
+    return {
+      web: url,
+      app: url.replace('https://www.notion.so/', 'notion://www.notion.so/')
+    };
   };
 
+  // Wire one card by id -> key in config
   const wire = (id, key) => {
     const a = document.getElementById(id);
     if (!a) return;
     const { web, app } = norm(L[key]);
-    if (web && web !== '#') a.href = web;           // fallback web URL
-    if (app) a.setAttribute('data-app', app);        // app deep link
-    a.classList.add('nl');                           // ensure app-first click handler applies
-    a.removeAttribute('target');                     // avoid _blank (breaks deep links)
+    if (web && web !== '#') a.setAttribute('href', web); else a.removeAttribute('href');
+    if (app) a.setAttribute('data-app', app); else a.removeAttribute('data-app');
+    a.classList.add('nl');            // mark for app-first handler
+    a.removeAttribute('target');      // deep links break in _blank
   };
 
+  // Cards
   wire('lnk-prompts','prompts');
   wire('lnk-outreach','outreach');
   wire('lnk-inventory','inventory');
@@ -32,37 +37,42 @@
   wire('lnk-training','training');
   wire('lnk-revenue','revenue');
 
-  // metrics: click-through to views if provided
-  const m1 = document.getElementById('metric-prompts');
-  if(m1 && L.metricActivePrompts && L.metricActivePrompts !== '#'){ m1.style.cursor='pointer'; m1.addEventListener('click', ()=>window.open(L.metricActivePrompts,'_blank')); }
-  const m2 = document.getElementById('metric-hotleads');
-  if(m2 && L.metricHotLeads && L.metricHotLeads !== '#'){ m2.style.cursor='pointer'; m2.addEventListener('click', ()=>window.open(L.metricHotLeads,'_blank')); }
-  const m3 = document.getElementById('metric-revenue');
-  if(m3 && L.metricRevenueThisMonth && L.metricRevenueThisMonth !== '#'){ m3.style.cursor='pointer'; m3.addEventListener('click', ()=>window.open(L.metricRevenueThisMonth,'_blank')); }
-})();
+  // Metrics (click-through to optional views)
+  const clickMetric = (id, key) => {
+    const el = document.getElementById(id);
+    const url = L[key];
+    if (el && url && url !== '#') {
+      el.style.cursor = 'pointer';
+      el.addEventListener('click', () => window.open(url, '_blank'));
+    }
+  };
+  clickMetric('metric-prompts','metricActivePrompts');
+  clickMetric('metric-hotleads','metricHotLeads');
+  clickMetric('metric-revenue','metricRevenueThisMonth');
 
-(function () {
+  // App-first open with web fallback (works in embeds)
   function openNotion(appUrl, webUrl) {
-    var to = null;
     try {
-      var nav = (window.top || window);
-      nav.location.href = appUrl;
-
-      to = setTimeout(function () {
+      const nav = (window.top || window);
+      if (appUrl) {
+        nav.location.href = appUrl;
+        setTimeout(() => { nav.location.href = webUrl; }, 700);
+      } else {
         nav.location.href = webUrl;
-      }, 700);
-    } catch (e) {
+      }
+    } catch (_) {
       window.location.href = webUrl;
     }
   }
 
-  document.querySelectorAll('a.nl[data-app]').forEach(function (a) {
-    a.addEventListener('click', function (e) {
-      var appUrl = a.getAttribute('data-app');
-      var webUrl = a.getAttribute('href');
-      if (!appUrl || !webUrl) return;
+  document.querySelectorAll('a.nl').forEach((a) => {
+    a.addEventListener('click', (e) => {
+      const webUrl = a.getAttribute('href');
+      const appUrl = a.getAttribute('data-app') ||
+                     (webUrl ? webUrl.replace('https://www.notion.so/','notion://www.notion.so/') : null);
+      if (!webUrl) return;
       e.preventDefault();
       openNotion(appUrl, webUrl);
     });
   });
-})();
+});
