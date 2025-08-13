@@ -57,12 +57,24 @@ html,body{margin:0;padding:0;background:#fff;color:var(--text);font-family:'Fahk
 
 .small{font-size:12px;opacity:.75}
 
-.card .title a,
-.card .desc a {
-  text-decoration: none; /* removes underline */}
+/* Kill underlines on card links (and keep brand colors) */
+a.card { 
+  text-decoration: none !important;
+  color: inherit;
+}
+a.card:hover,
+a.card:focus { 
+  text-decoration: none !important;
+}
 
-.card .title a:hover,
-.card .desc a:hover {
-  text-decoration: none; /* still no underline on hover */}
-  
+a.card .title,
+a.card .desc,
+a.card .title a,
+a.card .desc a {
+  text-decoration: none !important;
+  color: inherit; /* or var(--heading) just for .title if you prefer */
+}
+
+/* Optional: if Notion/webview injects styles, nuke any nested text-decorations */
+a.card * { text-decoration: none !important; }
  
