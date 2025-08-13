@@ -24,3 +24,29 @@
   const m3 = document.getElementById('metric-revenue');
   if(m3 && L.metricRevenueThisMonth && L.metricRevenueThisMonth !== '#'){ m3.style.cursor='pointer'; m3.addEventListener('click', ()=>window.open(L.metricRevenueThisMonth,'_blank')); }
 })();
+
+(function () {
+  function openNotion(appUrl, webUrl) {
+    var to = null;
+    try {
+      var nav = (window.top || window);
+      nav.location.href = appUrl;
+
+      to = setTimeout(function () {
+        nav.location.href = webUrl;
+      }, 700);
+    } catch (e) {
+      window.location.href = webUrl;
+    }
+  }
+
+  document.querySelectorAll('a.nl[data-app]').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      var appUrl = a.getAttribute('data-app');
+      var webUrl = a.getAttribute('href');
+      if (!appUrl || !webUrl) return;
+      e.preventDefault();
+      openNotion(appUrl, webUrl);
+    });
+  });
+})();
