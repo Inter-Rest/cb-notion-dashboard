@@ -1,20 +1,36 @@
-
 (function(){
   const L = window.CB_LINKS || {};
-  const set = (id, key)=>{
-    const a = document.getElementById(id);
-    if(a && L[key]) a.href = L[key];
+
+  // normalize any URL from config: accept https:// or notion://
+  const norm = (url) => {
+    if (!url || url === '#') return { web:'#', app:null };
+    if (url.startsWith('notion://')) {
+      return { web: url.replace('notion://','https://'), app: url };
+    }
+    // default: web given
+    return { web: url, app: url.replace('https://www.notion.so/','notion://www.notion.so/') };
   };
-  set('lnk-prompts','prompts');
-  set('lnk-outreach','outreach');
-  set('lnk-inventory','inventory');
-  set('lnk-seo','seo');
-  set('lnk-perf','perf');
-  set('lnk-sops','sops');
-  set('lnk-automation','automation');
-  set('lnk-events','events');
-  set('lnk-training','training');
-  set('lnk-revenue','revenue');
+
+  const wire = (id, key) => {
+    const a = document.getElementById(id);
+    if (!a) return;
+    const { web, app } = norm(L[key]);
+    if (web && web !== '#') a.href = web;           // fallback web URL
+    if (app) a.setAttribute('data-app', app);        // app deep link
+    a.classList.add('nl');                           // ensure app-first click handler applies
+    a.removeAttribute('target');                     // avoid _blank (breaks deep links)
+  };
+
+  wire('lnk-prompts','prompts');
+  wire('lnk-outreach','outreach');
+  wire('lnk-inventory','inventory');
+  wire('lnk-seo','seo');
+  wire('lnk-perf','perf');
+  wire('lnk-sops','sops');
+  wire('lnk-automation','automation');
+  wire('lnk-events','events');
+  wire('lnk-training','training');
+  wire('lnk-revenue','revenue');
 
   // metrics: click-through to views if provided
   const m1 = document.getElementById('metric-prompts');
