@@ -64,3 +64,32 @@ html,body{margin:0;padding:0;background:#fff;color:var(--text);font-family:'Fahk
 .card .title a:hover,
 .card .desc a:hover {
   text-decoration: none; /* still no underline on hover */}
+  
+  /* Strong, iframe-safe grid for cards */
+.container .grid{
+  display:grid !important;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr)) !important;
+  gap:16px !important;
+  width:100%;
+}
+
+/* Make sure cards behave as grid items */
+.container .grid .card{display:block;margin:0}
+
+/* If grid isn’t supported or gets blocked, fall back to flex */
+@supports not (display: grid){
+  .container .grid{display:flex !important; flex-wrap:wrap; gap:16px}
+  .container .grid .card{width:calc(33.333% - 16px)}
+  @media (max-width:900px){ .container .grid .card{width:calc(50% - 16px)} }
+  @media (max-width:560px){ .container .grid .card{width:100%} }
+}
+
+/* Metrics: make them responsive too (prevents odd widths in embeds) */
+.container .metrics{
+  display:grid !important;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr)) !important;
+  gap:14px !important;
+}
+
+/* Prevent any horizontal scroll inside Notion embed */
+html,body{overflow-x:hidden}
