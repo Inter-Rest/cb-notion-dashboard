@@ -1,78 +1,65 @@
-// assets/script.js
-document.addEventListener('DOMContentLoaded', function () {
+// assets/script.js  — minimal + stable
+
+// --- ORIGINAL BEHAVIOR: set hrefs from config (web URLs only) ---
+(function () {
   const L = window.CB_LINKS || {};
-
-  // Accept https:// or notion:// and produce both
-  const norm = (url) => {
-    if (!url || url === '#') return { web: '#', app: null };
-    if (url.startsWith('notion://')) {
-      return { web: url.replace('notion://', 'https://'), app: url };
-    }
-    return {
-      web: url,
-      app: url.replace('https://www.notion.so/', 'notion://www.notion.so/')
-    };
-  };
-
-  // Wire one card by id -> key in config
-  const wire = (id, key) => {
+  const set = (id, key) => {
     const a = document.getElementById(id);
-    if (!a) return;
-    const { web, app } = norm(L[key]);
-    if (web && web !== '#') a.setAttribute('href', web); else a.removeAttribute('href');
-    if (app) a.setAttribute('data-app', app); else a.removeAttribute('data-app');
-    a.classList.add('nl');            // mark for app-first handler
-    a.removeAttribute('target');      // deep links break in _blank
+    if (!a || !L[key]) return;
+    // Always store a normal web URL in href (even if config had notion://)
+    const url = String(L[key]).replace('notion://', 'https://');
+    a.href = url;
   };
 
-  // Cards
-  wire('lnk-prompts','prompts');
-  wire('lnk-outreach','outreach');
-  wire('lnk-inventory','inventory');
-  wire('lnk-seo','seo');
-  wire('lnk-perf','perf');
-  wire('lnk-sops','sops');
-  wire('lnk-automation','automation');
-  wire('lnk-events','events');
-  wire('lnk-training','training');
-  wire('lnk-revenue','revenue');
+  set('lnk-prompts','prompts');
+  set('lnk-outreach','outreach');
+  set('lnk-inventory','inventory');
+  set('lnk-seo','seo');
+  set('lnk-perf','perf');
+  set('lnk-sops','sops');
+  set('lnk-automation','automation');
+  set('lnk-events','events');
+  set('lnk-training','training');
+  set('lnk-revenue','revenue');
 
-  // Metrics (click-through to optional views)
-  const clickMetric = (id, key) => {
-    const el = document.getElementById(id);
-    const url = L[key];
-    if (el && url && url !== '#') {
-      el.style.cursor = 'pointer';
-      el.addEventListener('click', () => window.open(url, '_blank'));
-    }
-  };
-  clickMetric('metric-prompts','metricActivePrompts');
-  clickMetric('metric-hotleads','metricHotLeads');
-  clickMetric('metric-revenue','metricRevenueThisMonth');
+  // metrics (unchanged)
+  const m1 = document.getElementById('metric-prompts');
+  if (m1 && L.metricActivePrompts && L.metricActivePrompts !== '#') {
+    m1.style.cursor = 'pointer';
+    m1.addEventListener('click', () => window.open(L.metricActivePrompts,'_blank'));
+  }
+  const m2 = document.getElementById('metric-hotleads');
+  if (m2 && L.metricHotLeads && L.metricHotLeads !== '#') {
+    m2.style.cursor = 'pointer';
+    m2.addEventListener('click', () => window.open(L.metricHotLeads,'_blank'));
+  }
+  const m3 = document.getElementById('metric-revenue');
+  if (m3 && L.metricRevenueThisMonth && L.metricRevenueThisMonth !== '#') {
+    m3.style.cursor = 'pointer';
+    m3.addEventListener('click', () => window.open(L.metricRevenueThisMonth,'_blank'));
+  }
+})();
 
-  // App-first open with web fallback (works in embeds)
+// --- ADD-ON: app-first open (derives notion:// from current href) ---
+(function () {
   function openNotion(appUrl, webUrl) {
     try {
       const nav = (window.top || window);
-      if (appUrl) {
-        nav.location.href = appUrl;
-        setTimeout(() => { nav.location.href = webUrl; }, 700);
-      } else {
-        nav.location.href = webUrl;
-      }
+      nav.location.href = appUrl;                 // try app deep link
+      setTimeout(() => { nav.location.href = webUrl; }, 700); // fallback to web
     } catch (_) {
       window.location.href = webUrl;
     }
   }
 
-  document.querySelectorAll('a.nl').forEach((a) => {
+  // Attach to all dashboard cards by id pattern; no HTML changes required
+  document.querySelectorAll('a[id^="lnk-"]').forEach((a) => {
     a.addEventListener('click', (e) => {
       const webUrl = a.getAttribute('href');
-      const appUrl = a.getAttribute('data-app') ||
-                     (webUrl ? webUrl.replace('https://www.notion.so/','notion://www.notion.so/') : null);
-      if (!webUrl) return;
+      if (!webUrl || webUrl === '#') return;      // nothing to do
+      const appUrl = webUrl.replace('https://www.notion.so/','notion://www.notion.so/');
       e.preventDefault();
       openNotion(appUrl, webUrl);
     });
   });
-});
+})();
