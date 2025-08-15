@@ -2,7 +2,8 @@ name: Update nums.json from Notion
 
 on:
   schedule:
-    - cron: "7 9 * * *"
+    - cron: '0 16 * * *'  # 9:00 AM PT during PDT (UTC-7)
+    - cron: '0 17 * * *'  # 9:00 AM PT during PST (UTC-8)
   workflow_dispatch: {}
 
 jobs:
@@ -14,7 +15,6 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
 
-      # install deps needed by the script
       - name: Install deps
         run: |
           npm -y init
