@@ -16,9 +16,10 @@ const OUT_PATH       = 'assets/nums.json';
 const toNum    = v => { const n = Number(String(v ?? '').replace(/[, ]+/g,'')); return Number.isFinite(n) ? n : 0; };
 const roundInt = v => Math.round(toNum(v));
 
-/* ---- Google auth ---- */
+/* ---- Google auth (handle escaped \n) ---- */
 const creds = JSON.parse(CREDS_JSON);
-console.log('DEBUG svc acct:', { project_id: creds.project_id, client_email: creds.client_email });
+creds.private_key = (creds.private_key || '').replace(/\\n/g, '\n');   // ← critical fix
+console.log('DEBUG svc acct:', { project_id: creds.project_id, client_email: creds.client_email, hasKey: !!creds.private_key });
 
 const jwt = new google.auth.JWT(
   creds.client_email,
@@ -30,14 +31,11 @@ const jwt = new google.auth.JWT(
   ]
 );
 
-// Force token retrieval; fail fast with clear error
 await jwt.authorize().catch(e => {
   throw new Error(`JWT authorize failed for ${creds.client_email} in project ${creds.project_id}: ${e.message}`);
 });
 
-// Set as default auth for all googleapis calls
 google.options({ auth: jwt });
-
 const sheets = google.sheets('v4');
 
 async function getCellValue(sheetId, range){
