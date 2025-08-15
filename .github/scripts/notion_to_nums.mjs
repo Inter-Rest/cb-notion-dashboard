@@ -16,27 +16,22 @@ const OUT_PATH       = 'assets/nums.json';
 const toNum    = v => { const n = Number(String(v ?? '').replace(/[, ]+/g,'')); return Number.isFinite(n) ? n : 0; };
 const roundInt = v => Math.round(toNum(v));
 
-/* ---- Google auth (handle escaped \n) ---- */
+/* ---- Google auth via GoogleAuth (handles key internally) ---- */
 const creds = JSON.parse(CREDS_JSON);
-creds.private_key = (creds.private_key || '').replace(/\\n/g, '\n');   // ← critical fix
+// fix escaped newlines if present
+if (creds.private_key) creds.private_key = creds.private_key.replace(/\\n/g, '\n');
 console.log('DEBUG svc acct:', { project_id: creds.project_id, client_email: creds.client_email, hasKey: !!creds.private_key });
 
-const jwt = new google.auth.JWT(
-  creds.client_email,
-  null,
-  creds.private_key,
-  [
+const auth = new google.auth.GoogleAuth({
+  credentials: creds,
+  scopes: [
     'https://www.googleapis.com/auth/spreadsheets.readonly',
     'https://www.googleapis.com/auth/drive.readonly'
   ]
-);
-
-await jwt.authorize().catch(e => {
-  throw new Error(`JWT authorize failed for ${creds.client_email} in project ${creds.project_id}: ${e.message}`);
 });
+await auth.getClient(); // forces validation
 
-google.options({ auth: jwt });
-const sheets = google.sheets('v4');
+const sheets = google.sheets({ version: 'v4', auth });
 
 async function getCellValue(sheetId, range){
   try{
