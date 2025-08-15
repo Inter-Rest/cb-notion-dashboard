@@ -1,42 +1,98 @@
-// Notion → assets/nums.json
-// Secrets required: NOTION_TOKEN, NOTION_DB_ID
+// .github/scripts/notion_to_nums.mjs
+// Notion + Google Sheets → assets/nums.json
+// Secrets: NOTION_TOKEN, NOTION_DB_ID, GOOGLE_CREDENTIALS, SHEET_ID_HEALTH, SHEET_ID_EXPORT, RANGE_CLICKS_7D, RANGE_CLICKS_30D
 import fs from 'node:fs/promises';
+import { google } from 'googleapis';
 
-const notionToken = process.env.NOTION_TOKEN;
-const dbId = process.env.NOTION_DB_ID;
-const filePath = 'assets/nums.json';
+/* ===== env ===== */
+const NOTION_TOKEN   = process.env.NOTION_TOKEN;
+const NOTION_DB_ID   = process.env.NOTION_DB_ID;
+const CREDS_JSON     = process.env.GOOGLE_CREDENTIALS;
+const SHEET_ID_7D    = process.env.SHEET_ID_HEALTH;
+const SHEET_ID_30D   = process.env.SHEET_ID_EXPORT;
+const RANGE_7D       = process.env.RANGE_CLICKS_7D;     // e.g., Data_Log!B2
+const RANGE_30D      = process.env.RANGE_CLICKS_30D;    // e.g., metrics_export!B8
+const OUT_PATH       = 'assets/nums.json';
 
-async function fetchLatestRow(){
-  const res = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`,{
+/* ===== helpers ===== */
+const toNum = (v) => {
+  const n = Number(String(v).replace(/[, ]+/g,''));
+  return Number.isFinite(n) ? n : 0;
+};
+const roundInt = (v) => Math.round(toNum(v));
+
+/* ===== Google Sheets auth ===== */
+const creds = JSON.parse(CREDS_JSON);
+const jwt = new google.auth.JWT(
+  creds.client_email,
+  null,
+  creds.private_key,
+  ['https://www.googleapis.com/auth/spreadsheets.readonly']
+);
+const sheets = google.sheets({ version: 'v4', auth: jwt });
+
+async function getCellValue(sheetId, range){
+  const r = await sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range });
+  const v = r.data.values?.[0]?.[0] ?? 0;
+  return toNum(v);
+}
+
+/* ===== Notion ===== */
+async function fetchNotionKPIs(){
+  const res = await fetch(`https://api.notion.com/v1/databases/${NOTION_DB_ID}/query`,{
     method:'POST',
     headers:{
-      'Authorization':`Bearer ${notionToken}`,
+      'Authorization':`Bearer ${NOTION_TOKEN}`,
       'Notion-Version':'2022-06-28',
       'Content-Type':'application/json'
     },
-    // Sort by built-in timestamp so no custom "Date" prop is required
     body: JSON.stringify({
       sorts:[{ timestamp:'created_time', direction:'descending' }],
       page_size: 1
     })
   });
-  if(!res.ok) throw new Error(await res.text());
-
+  if(!res.ok){
+    const t = await res.text();
+    throw new Error(`Notion query failed: ${t}`);
+  }
   const j = await res.json();
-  const p = j.results?.[0]?.properties || {};
-  const num = k => p[k]?.number ?? 0;
+  const props = j.results?.[0]?.properties || {};
+  console.log('DEBUG: Notion properties found:', Object.keys(props));
+
+  const num = (k) => toNum(props[k]?.number ?? 0);
 
   return {
     eventsThisMonth:       num('Events this Month'),
     revenueThisMonth:      num('This Month’s Revenue'),
     eventsBookedThisMonth: num('Events Booked This Month'),
-    ytdRevenue:            num('YTD Revenue'),
-    clicks7d:              num('Website Clicks – This Week'),
-    clicks30d:             num('Website Clicks – Last 30 Days')
+    ytdRevenue:            num('YTD Revenue')
   };
 }
 
-const out = await fetchLatestRow();
-await fs.mkdir('assets', { recursive: true });
-await fs.writeFile(filePath, JSON.stringify(out), 'utf8');
-console.log('Wrote', filePath, out);
+/* ===== run ===== */
+try{
+  const [kpis, clicks7dRaw, clicks30dRaw] = await Promise.all([
+    fetchNotionKPIs(),
+    getCellValue(SHEET_ID_7D,  RANGE_7D),
+    getCellValue(SHEET_ID_30D, RANGE_30D)
+  ]);
+
+  console.log('DEBUG: Sheets 7D',  { sheet: SHEET_ID_7D,  range: RANGE_7D,  value: clicks7dRaw });
+  console.log('DEBUG: Sheets 30D', { sheet: SHEET_ID_30D, range: RANGE_30D, value: clicks30dRaw });
+
+  const out = {
+    eventsThisMonth:       roundInt(kpis.eventsThisMonth),
+    revenueThisMonth:      roundInt(kpis.revenueThisMonth),
+    eventsBookedThisMonth: roundInt(kpis.eventsBookedThisMonth),
+    ytdRevenue:            roundInt(kpis.ytdRevenue),
+    clicks7d:              roundInt(clicks7dRaw),
+    clicks30d:             roundInt(clicks30dRaw)
+  };
+
+  await fs.mkdir('assets', { recursive: true });
+  await fs.writeFile(OUT_PATH, JSON.stringify(out), 'utf8');
+  console.log('Wrote', OUT_PATH, out);
+}catch(err){
+  console.error('ERROR:', err?.stack || err);
+  process.exit(1);
+}
