@@ -1,5 +1,4 @@
 // Notion + Google Sheets → assets/nums.json
-// Secrets: NOTION_TOKEN, NOTION_DB_ID, GOOGLE_CREDENTIALS, SHEET_ID_HEALTH, SHEET_ID_EXPORT, RANGE_CLICKS_7D, RANGE_CLICKS_30D
 import fs from 'node:fs/promises';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
@@ -14,21 +13,32 @@ const RANGE_7D       = process.env.RANGE_CLICKS_7D;
 const RANGE_30D      = process.env.RANGE_CLICKS_30D;
 const OUT_PATH       = 'assets/nums.json';
 
-const toNum   = (v) => { const n = Number(String(v ?? '').replace(/[, ]+/g,'')); return Number.isFinite(n) ? n : 0; };
-const roundInt= (v) => Math.round(toNum(v));
+const toNum    = v => { const n = Number(String(v ?? '').replace(/[, ]+/g,'')); return Number.isFinite(n) ? n : 0; };
+const roundInt = v => Math.round(toNum(v));
 
-/* ---- Google auth (explicit authorize) ---- */
+/* ---- Google auth ---- */
 const creds = JSON.parse(CREDS_JSON);
+console.log('DEBUG svc acct:', { project_id: creds.project_id, client_email: creds.client_email });
+
 const jwt = new google.auth.JWT(
   creds.client_email,
   null,
   creds.private_key,
-  ['https://www.googleapis.com/auth/spreadsheets.readonly','https://www.googleapis.com/auth/drive.readonly']
+  [
+    'https://www.googleapis.com/auth/spreadsheets.readonly',
+    'https://www.googleapis.com/auth/drive.readonly'
+  ]
 );
 
-await jwt.authorize().catch(e => { throw new Error(`JWT authorize failed for ${creds.client_email} in project ${creds.project_id}: ${e.message}`); });
+// Force token retrieval; fail fast with clear error
+await jwt.authorize().catch(e => {
+  throw new Error(`JWT authorize failed for ${creds.client_email} in project ${creds.project_id}: ${e.message}`);
+});
 
-const sheets = google.sheets({ version: 'v4', auth: jwt });
+// Set as default auth for all googleapis calls
+google.options({ auth: jwt });
+
+const sheets = google.sheets('v4');
 
 async function getCellValue(sheetId, range){
   try{
@@ -54,7 +64,7 @@ async function fetchNotionKPIs(){
   if(!res.ok){ throw new Error(`Notion query failed: ${await res.text()}`); }
   const j = await res.json();
   const props = j.results?.[0]?.properties || {};
-  const num = (k) => toNum(props[k]?.number ?? 0);
+  const num = k => toNum(props[k]?.number ?? 0);
   return {
     eventsThisMonth:       num('Events this Month'),
     revenueThisMonth:      num('This Month’s Revenue'),
@@ -65,12 +75,12 @@ async function fetchNotionKPIs(){
 
 /* ---- Run ---- */
 try{
-  console.log('DEBUG svc acct:', { project_id: creds.project_id, client_email: creds.client_email });
   const [kpis, clicks7dRaw, clicks30dRaw] = await Promise.all([
     fetchNotionKPIs(),
     getCellValue(SHEET_ID_7D,  RANGE_7D),
     getCellValue(SHEET_ID_30D, RANGE_30D)
   ]);
+
   console.log('DEBUG 7D:',  { sheet: SHEET_ID_7D,  range: RANGE_7D,  value: clicks7dRaw });
   console.log('DEBUG 30D:', { sheet: SHEET_ID_30D, range: RANGE_30D, value: clicks30dRaw });
 
