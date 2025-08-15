@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Chateau Bounce — OS Dashboard</title>
+  <title>OS Dashboard</title>
   <link rel="stylesheet" href="assets/styles.css">
   <meta name="theme-color" content="#D9EAF8">
   <script src="https://unpkg.com/feather-icons"></script>
@@ -21,17 +21,24 @@
     </div>
 
     <!-- Key Metrics Row -->
-<div class="metrics">
-  <div class="metric blue" id="metric-events-this-month" title="Click to open Notion view">
-    <div class="label">Events this Month</div>
-    <div class="value">—</div>
-    <div class="small">All event types</div>
-  </div>
-
   <div class="metric gold" id="metric-revenue-this-month" title="Click to open Notion view">
     <div class="label">This Month’s Revenue</div>
     <div class="value">$ —</div>
-    <div class="small">Sum of paid bookings</div>
+    <div class="small">Events Scheduled for this Month</div>
+  </div>
+
+  <div class="metric gold" id="metric-ytd-revenue" title="Click to open Notion view">
+    <div class="label">YTD Revenue</div>
+    <div class="value">$ —</div>
+    <div class="small">Year-to-date total</div>
+  </div>
+</div>
+
+<div class="metrics">
+  <div class="metric light-blue" id="metric-events-this-month" title="Click to open Notion view">
+    <div class="label">Events this Month</div>
+    <div class="value">—</div>
+    <div class="small">All event types</div>
   </div>
 
   <div class="metric light-blue" id="metric-events-booked-this-month" title="Click to open Notion view">
@@ -39,13 +46,6 @@
     <div class="value">—</div>
     <div class="small">Confirmed bookings</div>
   </div>
-
-  <div class="metric gray" id="metric-ytd-revenue" title="Click to open Notion view">
-    <div class="label">YTD Revenue</div>
-    <div class="value">$ —</div>
-    <div class="small">Year-to-date total</div>
-  </div>
-</div>
 
 <!-- Website Clicks Row -->
 <div class="metrics metrics--two-center">
