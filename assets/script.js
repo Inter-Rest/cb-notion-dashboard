@@ -100,3 +100,24 @@
   wireMetric('metric-clicks-7d',                'clicks7d',              'metricClicks7d');
   wireMetric('metric-clicks-30d',               'clicks30d',             'metricClicks30d');
 })();
+
+// Load static metrics JSON written daily by automation
+(async function(){
+  try{
+    const r = await fetch('/assets/nums.json', {cache:'no-store'});
+    if(!r.ok) return;
+    const M = await r.json();
+    const set = (id,val, fmt=false) => {
+      if(val==null) return;
+      const el = document.querySelector(`#${id} .value`);
+      if(!el) return;
+      el.textContent = fmt ? Number(val).toLocaleString() : String(val);
+    };
+    set('metric-events-this-month',        M.eventsThisMonth);
+    set('metric-revenue-this-month',       M.revenueThisMonth, true);
+    set('metric-events-booked-this-month', M.eventsBookedThisMonth);
+    set('metric-ytd-revenue',              M.ytdRevenue, true);
+    set('metric-clicks-7d',                M.clicks7d);
+    set('metric-clicks-30d',               M.clicks30d);
+  }catch(e){}
+})();
