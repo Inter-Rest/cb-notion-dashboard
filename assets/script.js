@@ -104,31 +104,38 @@
    =================================================== */
 (async function(){
   const paths = [
-    `/assets/nums.json?ts=${Date.now()}`,   // absolute
-    `assets/nums.json?ts=${Date.now()}`     // relative fallback
+    `/assets/nums.json?ts=${Date.now()}`,
+    `assets/nums.json?ts=${Date.now()}`
   ];
+
+  // helpers: integer and currency formatting (no decimals)
+  const toInt = v => Number.isFinite(+v) ? Math.round(+v).toLocaleString() : String(v);
+  const toMoney = v => '$' + toInt(v);
+
+  // write helper
+  const put = (id, val) => {
+    const el = document.querySelector(`#${id} .value`);
+    if (el) el.textContent = String(val);
+  };
+
   for (const url of paths){
     try{
       const r = await fetch(url, {cache:'no-store'});
       if(!r.ok){ console.warn('nums.json fetch failed', url, r.status); continue; }
       const M = await r.json();
-      console.log('nums.json loaded from', url, M);
 
-      const set = (id,val, fmt=false) => {
-        const el = document.querySelector(`#${id} .value`);
-        if(!el || val==null) return;
-        el.textContent = fmt ? Number(val).toLocaleString() : String(val);
-      };
+      // Top row
+      put('metric-events-this-month',        toInt(M.eventsThisMonth));
+      put('metric-revenue-this-month',       toMoney(M.revenueThisMonth));
+      put('metric-events-booked-this-month', toInt(M.eventsBookedThisMonth));
+      put('metric-ytd-revenue',              toMoney(M.ytdRevenue));
 
-      set('metric-events-this-month',        M.eventsThisMonth);
-      set('metric-revenue-this-month',       M.revenueThisMonth, true);
-      set('metric-events-booked-this-month', M.eventsBookedThisMonth);
-      set('metric-ytd-revenue',              M.ytdRevenue, true);
-      set('metric-clicks-7d',                M.clicks7d);
-      set('metric-clicks-30d',               M.clicks30d);
+      // Clicks row
+      put('metric-clicks-7d',                toInt(M.clicks7d));
+      put('metric-clicks-30d',               toInt(M.clicks30d));
 
       document.body.setAttribute('data-metrics-loaded','1');
-      return; // stop after first successful load
+      return;
     }catch(e){
       console.error('metrics load error', url, e);
     }
