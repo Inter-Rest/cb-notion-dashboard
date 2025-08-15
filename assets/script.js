@@ -31,8 +31,8 @@
   function openNotion(appUrl, webUrl) {
     try {
       const nav = (window.top || window);
-      nav.location.href = appUrl;                       // try app deep link
-      setTimeout(() => { nav.location.href = webUrl; }, 700); // fallback to web
+      nav.location.href = appUrl;                         // try app deep link
+      setTimeout(() => { nav.location.href = webUrl; }, 700); // web fallback
     } catch (_) {
       window.location.href = webUrl;
     }
@@ -50,18 +50,16 @@
 })();
 
 /* ===================================================
-   3) Metrics: values from Sheets + click-through links
+   3) Metrics: local config numbers + click-through links
    =================================================== */
 (function () {
   const L = window.CB_LINKS || {};
   const N = window.CB_NUMS  || {};
 
-  // Helper: normalize link and open with app-first behavior
   function openMetricLink(link){
     if(!link || link === '#') return;
     const webUrl = String(link).replace('notion://','https://');
     const appUrl = webUrl.replace('https://www.notion.so/','notion://www.notion.so/');
-    // same behavior as cards
     try {
       const nav = (window.top || window);
       nav.location.href = appUrl;
@@ -75,7 +73,7 @@
     const tile = document.getElementById(tileId);
     if(!tile) return;
 
-    // value injection
+    // initial value from CB_NUMS (can be overwritten by live fetch)
     const v = N[valueKey];
     if(v != null){
       const el = tile.querySelector('.value');
@@ -101,23 +99,38 @@
   wireMetric('metric-clicks-30d',               'clicks30d',             'metricClicks30d');
 })();
 
-// Load static metrics JSON written daily by automation
+/* ===================================================
+   4) LIVE METRICS: load assets/nums.json (cache-busted)
+   =================================================== */
 (async function(){
-  try{
-    const r = await fetch('/assets/nums.json', {cache:'no-store'});
-    if(!r.ok) return;
-    const M = await r.json();
-    const set = (id,val, fmt=false) => {
-      if(val==null) return;
-      const el = document.querySelector(`#${id} .value`);
-      if(!el) return;
-      el.textContent = fmt ? Number(val).toLocaleString() : String(val);
-    };
-    set('metric-events-this-month',        M.eventsThisMonth);
-    set('metric-revenue-this-month',       M.revenueThisMonth, true);
-    set('metric-events-booked-this-month', M.eventsBookedThisMonth);
-    set('metric-ytd-revenue',              M.ytdRevenue, true);
-    set('metric-clicks-7d',                M.clicks7d);
-    set('metric-clicks-30d',               M.clicks30d);
-  }catch(e){}
+  const paths = [
+    `/assets/nums.json?ts=${Date.now()}`,   // absolute
+    `assets/nums.json?ts=${Date.now()}`     // relative fallback
+  ];
+  for (const url of paths){
+    try{
+      const r = await fetch(url, {cache:'no-store'});
+      if(!r.ok){ console.warn('nums.json fetch failed', url, r.status); continue; }
+      const M = await r.json();
+      console.log('nums.json loaded from', url, M);
+
+      const set = (id,val, fmt=false) => {
+        const el = document.querySelector(`#${id} .value`);
+        if(!el || val==null) return;
+        el.textContent = fmt ? Number(val).toLocaleString() : String(val);
+      };
+
+      set('metric-events-this-month',        M.eventsThisMonth);
+      set('metric-revenue-this-month',       M.revenueThisMonth, true);
+      set('metric-events-booked-this-month', M.eventsBookedThisMonth);
+      set('metric-ytd-revenue',              M.ytdRevenue, true);
+      set('metric-clicks-7d',                M.clicks7d);
+      set('metric-clicks-30d',               M.clicks30d);
+
+      document.body.setAttribute('data-metrics-loaded','1');
+      return; // stop after first successful load
+    }catch(e){
+      console.error('metrics load error', url, e);
+    }
+  }
 })();
