@@ -1,8 +1,9 @@
-// .github/scripts/notion_to_nums.mjs
 // Notion + Google Sheets → assets/nums.json
 // Secrets: NOTION_TOKEN, NOTION_DB_ID, GOOGLE_CREDENTIALS, SHEET_ID_HEALTH, SHEET_ID_EXPORT, RANGE_CLICKS_7D, RANGE_CLICKS_30D
 import fs from 'node:fs/promises';
-import { google } from 'googleapis';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const { google } = require('googleapis'); // robust in Node 20 without package.json "type":"module"
 
 /* ===== env ===== */
 const NOTION_TOKEN   = process.env.NOTION_TOKEN;
@@ -16,7 +17,7 @@ const OUT_PATH       = 'assets/nums.json';
 
 /* ===== helpers ===== */
 const toNum = (v) => {
-  const n = Number(String(v).replace(/[, ]+/g,''));
+  const n = Number(String(v ?? '').replace(/[, ]+/g,''));
   return Number.isFinite(n) ? n : 0;
 };
 const roundInt = (v) => Math.round(toNum(v));
@@ -57,8 +58,6 @@ async function fetchNotionKPIs(){
   }
   const j = await res.json();
   const props = j.results?.[0]?.properties || {};
-  console.log('DEBUG: Notion properties found:', Object.keys(props));
-
   const num = (k) => toNum(props[k]?.number ?? 0);
 
   return {
@@ -77,8 +76,8 @@ try{
     getCellValue(SHEET_ID_30D, RANGE_30D)
   ]);
 
-  console.log('DEBUG: Sheets 7D',  { sheet: SHEET_ID_7D,  range: RANGE_7D,  value: clicks7dRaw });
-  console.log('DEBUG: Sheets 30D', { sheet: SHEET_ID_30D, range: RANGE_30D, value: clicks30dRaw });
+  console.log('DEBUG 7D:',  { sheet: SHEET_ID_7D,  range: RANGE_7D,  value: clicks7dRaw });
+  console.log('DEBUG 30D:', { sheet: SHEET_ID_30D, range: RANGE_30D, value: clicks30dRaw });
 
   const out = {
     eventsThisMonth:       roundInt(kpis.eventsThisMonth),
