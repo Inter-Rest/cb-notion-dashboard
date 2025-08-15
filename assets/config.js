@@ -1,6 +1,6 @@
 /* assets/config.js */
 
-/* Links */
+/* Module links (keep or change as needed) */
 window.CB_LINKS = {
   // Modules
   prompts:   "notion://www.notion.so/Prompts-Database-24bb58038c4b80f69976cc0d47ee1850?source=copy_link",
@@ -14,21 +14,24 @@ window.CB_LINKS = {
   training:  "#",
   revenue:   "#",
 
-  // Metric tiles (filtered views or GA4 explorations)
-  metricActivePrompts:      "#",
-  metricHotLeads:           "#",
-  metricRevenueThisMonth:   "#",
-  metricClicks7d:           "#", // Website Clicks — This Week
-  metricClicks30d:          "#"  // Website Clicks — Last 30 Days
+  /* Metric tiles (click-through targets) */
+  metricEventsThisMonth:       "#", // Events this Month
+  metricRevenueThisMonth:      "#", // This Month’s Revenue
+  metricEventsBookedThisMonth: "#", // Events Booked This Month
+  metricYTDRevenue:            "#", // YTD Revenue
+  metricClicks7d:              "#", // Website Clicks — This Week
+  metricClicks30d:             "#"  // Website Clicks — Last 30 Days
 };
 
-/* Optional numeric injections (Apps Script or server can overwrite) */
+/* Numeric injections from Sheets (Apps Script writes these) */
 window.CB_NUMS = {
-  revenueThisMonth: null, // e.g., "$12,340"
-  hotLeads:         null, // e.g., 7
-  clicks7d:         null, // e.g., 312
-  clicks30d:        null  // e.g., 1284
+  eventsThisMonth:       null, // number
+  revenueThisMonth:      null, // formatted string or number
+  eventsBookedThisMonth: null, // number
+  ytdRevenue:            null, // formatted string or number
+  clicks7d:              null, // number
+  clicks30d:             null  // number
 };
 
-/* Back-compat alias (older script.js may read window.L) */
+/* Back-compat alias */
 window.L = window.CB_LINKS;
