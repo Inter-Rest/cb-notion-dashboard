@@ -1,5 +1,5 @@
 // Notion → assets/nums.json
-// Requires repo secrets: NOTION_TOKEN, NOTION_DB_ID
+// Secrets required: NOTION_TOKEN, NOTION_DB_ID
 import fs from 'node:fs/promises';
 
 const notionToken = process.env.NOTION_TOKEN;
@@ -14,9 +14,14 @@ async function fetchLatestRow(){
       'Notion-Version':'2022-06-28',
       'Content-Type':'application/json'
     },
-    body: JSON.stringify({ sorts:[{property:'Date',direction:'descending'}], page_size:1 })
+    // Sort by built-in timestamp so no custom "Date" prop is required
+    body: JSON.stringify({
+      sorts:[{ timestamp:'created_time', direction:'descending' }],
+      page_size: 1
+    })
   });
   if(!res.ok) throw new Error(await res.text());
+
   const j = await res.json();
   const p = j.results?.[0]?.properties || {};
   const num = k => p[k]?.number ?? 0;
