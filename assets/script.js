@@ -1,13 +1,14 @@
-// assets/script.js  — minimal + stable
+/* assets/script.js — full replacement */
 
-// --- ORIGINAL BEHAVIOR: set hrefs from config (web URLs only) ---
+/* =========================
+   1) Module links → set hrefs
+   ========================= */
 (function () {
   const L = window.CB_LINKS || {};
   const set = (id, key) => {
     const a = document.getElementById(id);
     if (!a || !L[key]) return;
-    // Always store a normal web URL in href (even if config had notion://)
-    const url = String(L[key]).replace('notion://', 'https://');
+    const url = String(L[key]).replace('notion://', 'https://'); // normalize
     a.href = url;
   };
 
@@ -21,45 +22,81 @@
   set('lnk-events','events');
   set('lnk-training','training');
   set('lnk-revenue','revenue');
-
-  // metrics (unchanged)
-  const m1 = document.getElementById('metric-prompts');
-  if (m1 && L.metricActivePrompts && L.metricActivePrompts !== '#') {
-    m1.style.cursor = 'pointer';
-    m1.addEventListener('click', () => window.open(L.metricActivePrompts,'_blank'));
-  }
-  const m2 = document.getElementById('metric-hotleads');
-  if (m2 && L.metricHotLeads && L.metricHotLeads !== '#') {
-    m2.style.cursor = 'pointer';
-    m2.addEventListener('click', () => window.open(L.metricHotLeads,'_blank'));
-  }
-  const m3 = document.getElementById('metric-revenue');
-  if (m3 && L.metricRevenueThisMonth && L.metricRevenueThisMonth !== '#') {
-    m3.style.cursor = 'pointer';
-    m3.addEventListener('click', () => window.open(L.metricRevenueThisMonth,'_blank'));
-  }
 })();
 
-// --- ADD-ON: app-first open (derives notion:// from current href) ---
+/* =========================================
+   2) App-first open for all dashboard cards
+   ========================================= */
 (function () {
   function openNotion(appUrl, webUrl) {
     try {
       const nav = (window.top || window);
-      nav.location.href = appUrl;                 // try app deep link
+      nav.location.href = appUrl;                       // try app deep link
       setTimeout(() => { nav.location.href = webUrl; }, 700); // fallback to web
     } catch (_) {
       window.location.href = webUrl;
     }
   }
 
-  // Attach to all dashboard cards by id pattern; no HTML changes required
   document.querySelectorAll('a[id^="lnk-"]').forEach((a) => {
     a.addEventListener('click', (e) => {
       const webUrl = a.getAttribute('href');
-      if (!webUrl || webUrl === '#') return;      // nothing to do
+      if (!webUrl || webUrl === '#') return;
       const appUrl = webUrl.replace('https://www.notion.so/','notion://www.notion.so/');
       e.preventDefault();
       openNotion(appUrl, webUrl);
     });
   });
+})();
+
+/* ===================================================
+   3) Metrics: values from Sheets + click-through links
+   =================================================== */
+(function () {
+  const L = window.CB_LINKS || {};
+  const N = window.CB_NUMS  || {};
+
+  // Helper: normalize link and open with app-first behavior
+  function openMetricLink(link){
+    if(!link || link === '#') return;
+    const webUrl = String(link).replace('notion://','https://');
+    const appUrl = webUrl.replace('https://www.notion.so/','notion://www.notion.so/');
+    // same behavior as cards
+    try {
+      const nav = (window.top || window);
+      nav.location.href = appUrl;
+      setTimeout(() => { nav.location.href = webUrl; }, 700);
+    } catch(_) {
+      window.location.href = webUrl;
+    }
+  }
+
+  function wireMetric(tileId, valueKey, linkKey){
+    const tile = document.getElementById(tileId);
+    if(!tile) return;
+
+    // value injection
+    const v = N[valueKey];
+    if(v != null){
+      const el = tile.querySelector('.value');
+      if(el) el.textContent = String(v);
+    }
+
+    // click-through
+    const href = L[linkKey];
+    if(href && href !== '#'){
+      tile.style.cursor = 'pointer';
+      tile.addEventListener('click', () => openMetricLink(href));
+    }
+  }
+
+  /* Top row */
+  wireMetric('metric-events-this-month',        'eventsThisMonth',       'metricEventsThisMonth');
+  wireMetric('metric-revenue-this-month',       'revenueThisMonth',      'metricRevenueThisMonth');
+  wireMetric('metric-events-booked-this-month', 'eventsBookedThisMonth', 'metricEventsBookedThisMonth');
+  wireMetric('metric-ytd-revenue',              'ytdRevenue',            'metricYTDRevenue');
+
+  /* Second row */
+  wireMetric('metric-clicks-7d',                'clicks7d',              'metricClicks7d');
+  wireMetric('metric-clicks-30d',               'clicks30d',             'metricClicks30d');
 })();
