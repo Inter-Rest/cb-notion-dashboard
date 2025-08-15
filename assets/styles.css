@@ -104,3 +104,20 @@ a.card * { text-decoration: none !important; }
 
 /* Optional tighter padding if needed */
 .metric { padding: 16px; }
+
+/* spacing between metrics rows */
+.metrics { margin: 8px 0; }                 /* tighten default */
+.metrics + .metrics { margin-top: 12px; }    /* small gap to next row */
+
+/* clicks row centered, no extra bottom/top space */
+.metrics.metrics--two-center{
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  max-width: 900px;
+  margin: 12px auto 8px;                     /* was 0 auto; reduced gap */
+}
+
+/* grid columns */
+.metrics{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
+@media (max-width:768px){
+  .metrics{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
