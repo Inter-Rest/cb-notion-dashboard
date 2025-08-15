@@ -78,3 +78,29 @@ a.card .desc a {
 /* Optional: if Notion/webview injects styles, nuke any nested text-decorations */
 a.card * { text-decoration: none !important; }
  
+/* Metrics grid: 4 cols desktop, 2 cols mobile */
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+/* Mobile: 2 per row */
+@media (max-width: 768px) {
+  .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Clicks row: center two tiles on desktop */
+.metrics.metrics--two-center {
+  grid-template-columns: repeat(2, minmax(0, 1fr));   /* two columns on desktop */
+  max-width: 900px;                                    /* centers the row visually */
+  margin: 0 auto;
+}
+
+/* Typography sizing for metric tiles */
+.metric .label { font-size: 14px; }
+.metric .value { font-size: 28px; line-height: 1.15; }
+.metric .small { font-size: 12px; opacity: .8; }
+
+/* Optional tighter padding if needed */
+.metric { padding: 16px; }
