@@ -2,37 +2,39 @@ name: Update nums.json from Notion
 
 on:
   schedule:
-    - cron: "7 9 * * *"   # 09:07 UTC daily = 02:07 PT (Los Angeles)
+    - cron: "7 9 * * *"
   workflow_dispatch: {}
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    permissions: { contents: write }
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+        with: { node-version: '20' }
 
-      - name: Install fetch polyfill
+      # install deps needed by the script
+      - name: Install deps
         run: |
           npm -y init
-          npm i undici
+          npm i undici googleapis
 
-      - name: Pull from Notion and write assets/nums.json
+      - name: Pull KPIs and clicks → assets/nums.json
         env:
-          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
-          NOTION_DB_ID: ${{ secrets.NOTION_DB_ID }}
-        run: |
-          node -e "global.fetch=require('undici').fetch; (async()=>{await import('./.github/scripts/notion_to_nums.mjs')})()"
+          NOTION_TOKEN:       ${{ secrets.NOTION_TOKEN }}
+          NOTION_DB_ID:       ${{ secrets.NOTION_DB_ID }}
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+          SHEET_ID_HEALTH:    ${{ secrets.SHEET_ID_HEALTH }}
+          SHEET_ID_EXPORT:    ${{ secrets.SHEET_ID_EXPORT }}
+          RANGE_CLICKS_7D:    ${{ secrets.RANGE_CLICKS_7D }}
+          RANGE_CLICKS_30D:   ${{ secrets.RANGE_CLICKS_30D }}
+        run: node -e "global.fetch=require('undici').fetch; (async()=>{await import('./.github/scripts/notion_to_nums.mjs')})()"
 
-      - name: Commit and push updated nums.json
+      - name: Commit and push
         run: |
           git config user.name "github-actions"
           git config user.email "actions@users.noreply.github.com"
           git add assets/nums.json
-          git commit -m "chore: update nums.json from Notion [skip ci]" || exit 0
+          git commit -m "chore: update nums.json [skip ci]" || exit 0
           git push
