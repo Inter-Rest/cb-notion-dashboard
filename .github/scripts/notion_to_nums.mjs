@@ -4,24 +4,23 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { google } = require('googleapis');
 
+/* env */
 const NOTION_TOKEN   = process.env.NOTION_TOKEN;
 const NOTION_DB_ID   = process.env.NOTION_DB_ID;
-const CREDS_JSON     = process.env.GOOGLE_CREDENTIALS;
-const SHEET_ID_7D    = process.env.SHEET_ID_HEALTH;
-const SHEET_ID_30D   = process.env.SHEET_ID_EXPORT;
-const RANGE_7D       = process.env.RANGE_CLICKS_7D;
-const RANGE_30D      = process.env.RANGE_CLICKS_30D;
+const CREDS_JSON     = process.env.GOOGLE_CREDENTIALS;          // full JSON
+const SHEET_ID_7D    = process.env.SHEET_ID_HEALTH;              // same id ok
+const SHEET_ID_30D   = process.env.SHEET_ID_EXPORT;              // can be same
+const RANGE_7D       = process.env.RANGE_CLICKS_7D || 'GSC_Raw!B2';
+const RANGE_30D      = process.env.RANGE_CLICKS_30D || 'GSC_Raw!C2';
 const OUT_PATH       = 'assets/nums.json';
 
-const toNum    = v => { const n = Number(String(v ?? '').replace(/[, ]+/g,'')); return Number.isFinite(n) ? n : 0; };
-const roundInt = v => Math.round(toNum(v));
+/* utils */
+const toNum = v => { const n = Number(String(v ?? '').replace(/[, ]+/g,'')); return Number.isFinite(n) ? n : 0; };
+const i     = v => Math.round(toNum(v));
 
-/* ---- Google auth via GoogleAuth (handles key internally) ---- */
+/* Google auth (service account JSON from secret) */
 const creds = JSON.parse(CREDS_JSON);
-// fix escaped newlines if present
 if (creds.private_key) creds.private_key = creds.private_key.replace(/\\n/g, '\n');
-console.log('DEBUG svc acct:', { project_id: creds.project_id, client_email: creds.client_email, hasKey: !!creds.private_key });
-
 const auth = new google.auth.GoogleAuth({
   credentials: creds,
   scopes: [
@@ -29,21 +28,15 @@ const auth = new google.auth.GoogleAuth({
     'https://www.googleapis.com/auth/drive.readonly'
   ]
 });
-await auth.getClient(); // forces validation
-
+await auth.getClient();
 const sheets = google.sheets({ version: 'v4', auth });
 
-async function getCellValue(sheetId, range){
-  try{
-    const r = await sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range });
-    const v = r.data.values?.[0]?.[0] ?? 0;
-    return toNum(v);
-  }catch(e){
-    throw new Error(`Sheets read failed: spreadsheetId=${sheetId} range=${range} :: ${e.message}`);
-  }
+async function getCell(sheetId, range){
+  const r = await sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range });
+  return toNum(r.data.values?.[0]?.[0] ?? 0);
 }
 
-/* ---- Notion ---- */
+/* Notion KPIs */
 async function fetchNotionKPIs(){
   const res = await fetch(`https://api.notion.com/v1/databases/${NOTION_DB_ID}/query`,{
     method:'POST',
@@ -54,10 +47,10 @@ async function fetchNotionKPIs(){
     },
     body: JSON.stringify({ sorts:[{ timestamp:'created_time', direction:'descending' }], page_size: 1 })
   });
-  if(!res.ok){ throw new Error(`Notion query failed: ${await res.text()}`); }
+  if(!res.ok) throw new Error(await res.text());
   const j = await res.json();
-  const props = j.results?.[0]?.properties || {};
-  const num = k => toNum(props[k]?.number ?? 0);
+  const p = j.results?.[0]?.properties || {};
+  const num = k => toNum(p[k]?.number ?? 0);
   return {
     eventsThisMonth:       num('Events this Month'),
     revenueThisMonth:      num('This Month’s Revenue'),
@@ -66,30 +59,27 @@ async function fetchNotionKPIs(){
   };
 }
 
-/* ---- Run ---- */
+/* run */
 try{
   const [kpis, clicks7dRaw, clicks30dRaw] = await Promise.all([
     fetchNotionKPIs(),
-    getCellValue(SHEET_ID_7D,  RANGE_7D),
-    getCellValue(SHEET_ID_30D, RANGE_30D)
+    getCell(SHEET_ID_7D,  RANGE_7D),
+    getCell(SHEET_ID_30D, RANGE_30D)
   ]);
 
-  console.log('DEBUG 7D:',  { sheet: SHEET_ID_7D,  range: RANGE_7D,  value: clicks7dRaw });
-  console.log('DEBUG 30D:', { sheet: SHEET_ID_30D, range: RANGE_30D, value: clicks30dRaw });
-
   const out = {
-    eventsThisMonth:       roundInt(kpis.eventsThisMonth),
-    revenueThisMonth:      roundInt(kpis.revenueThisMonth),
-    eventsBookedThisMonth: roundInt(kpis.eventsBookedThisMonth),
-    ytdRevenue:            roundInt(kpis.ytdRevenue),
-    clicks7d:              roundInt(clicks7dRaw),
-    clicks30d:             roundInt(clicks30dRaw)
+    eventsThisMonth:       i(kpis.eventsThisMonth),
+    revenueThisMonth:      i(kpis.revenueThisMonth),
+    eventsBookedThisMonth: i(kpis.eventsBookedThisMonth),
+    ytdRevenue:            i(kpis.ytdRevenue),
+    clicks7d:              i(clicks7dRaw),
+    clicks30d:             i(clicks30dRaw)
   };
 
   await fs.mkdir('assets', { recursive: true });
   await fs.writeFile(OUT_PATH, JSON.stringify(out), 'utf8');
   console.log('Wrote', OUT_PATH, out);
-}catch(err){
-  console.error('ERROR:', err?.stack || err);
+} catch (e) {
+  console.error('ERROR:', e?.stack || e);
   process.exit(1);
 }
