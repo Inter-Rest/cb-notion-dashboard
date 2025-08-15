@@ -3,42 +3,44 @@
 import fs from 'node:fs/promises';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const { google } = require('googleapis'); // robust in Node 20 without package.json "type":"module"
+const { google } = require('googleapis');
 
-/* ===== env ===== */
 const NOTION_TOKEN   = process.env.NOTION_TOKEN;
 const NOTION_DB_ID   = process.env.NOTION_DB_ID;
 const CREDS_JSON     = process.env.GOOGLE_CREDENTIALS;
 const SHEET_ID_7D    = process.env.SHEET_ID_HEALTH;
 const SHEET_ID_30D   = process.env.SHEET_ID_EXPORT;
-const RANGE_7D       = process.env.RANGE_CLICKS_7D;     // e.g., Data_Log!B2
-const RANGE_30D      = process.env.RANGE_CLICKS_30D;    // e.g., metrics_export!B8
+const RANGE_7D       = process.env.RANGE_CLICKS_7D;
+const RANGE_30D      = process.env.RANGE_CLICKS_30D;
 const OUT_PATH       = 'assets/nums.json';
 
-/* ===== helpers ===== */
-const toNum = (v) => {
-  const n = Number(String(v ?? '').replace(/[, ]+/g,''));
-  return Number.isFinite(n) ? n : 0;
-};
-const roundInt = (v) => Math.round(toNum(v));
+const toNum   = (v) => { const n = Number(String(v ?? '').replace(/[, ]+/g,'')); return Number.isFinite(n) ? n : 0; };
+const roundInt= (v) => Math.round(toNum(v));
 
-/* ===== Google Sheets auth ===== */
+/* ---- Google auth (explicit authorize) ---- */
 const creds = JSON.parse(CREDS_JSON);
 const jwt = new google.auth.JWT(
   creds.client_email,
   null,
   creds.private_key,
-  ['https://www.googleapis.com/auth/spreadsheets.readonly']
+  ['https://www.googleapis.com/auth/spreadsheets.readonly','https://www.googleapis.com/auth/drive.readonly']
 );
+
+await jwt.authorize().catch(e => { throw new Error(`JWT authorize failed for ${creds.client_email} in project ${creds.project_id}: ${e.message}`); });
+
 const sheets = google.sheets({ version: 'v4', auth: jwt });
 
 async function getCellValue(sheetId, range){
-  const r = await sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range });
-  const v = r.data.values?.[0]?.[0] ?? 0;
-  return toNum(v);
+  try{
+    const r = await sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range });
+    const v = r.data.values?.[0]?.[0] ?? 0;
+    return toNum(v);
+  }catch(e){
+    throw new Error(`Sheets read failed: spreadsheetId=${sheetId} range=${range} :: ${e.message}`);
+  }
 }
 
-/* ===== Notion ===== */
+/* ---- Notion ---- */
 async function fetchNotionKPIs(){
   const res = await fetch(`https://api.notion.com/v1/databases/${NOTION_DB_ID}/query`,{
     method:'POST',
@@ -47,19 +49,12 @@ async function fetchNotionKPIs(){
       'Notion-Version':'2022-06-28',
       'Content-Type':'application/json'
     },
-    body: JSON.stringify({
-      sorts:[{ timestamp:'created_time', direction:'descending' }],
-      page_size: 1
-    })
+    body: JSON.stringify({ sorts:[{ timestamp:'created_time', direction:'descending' }], page_size: 1 })
   });
-  if(!res.ok){
-    const t = await res.text();
-    throw new Error(`Notion query failed: ${t}`);
-  }
+  if(!res.ok){ throw new Error(`Notion query failed: ${await res.text()}`); }
   const j = await res.json();
   const props = j.results?.[0]?.properties || {};
   const num = (k) => toNum(props[k]?.number ?? 0);
-
   return {
     eventsThisMonth:       num('Events this Month'),
     revenueThisMonth:      num('This Month’s Revenue'),
@@ -68,14 +63,14 @@ async function fetchNotionKPIs(){
   };
 }
 
-/* ===== run ===== */
+/* ---- Run ---- */
 try{
+  console.log('DEBUG svc acct:', { project_id: creds.project_id, client_email: creds.client_email });
   const [kpis, clicks7dRaw, clicks30dRaw] = await Promise.all([
     fetchNotionKPIs(),
     getCellValue(SHEET_ID_7D,  RANGE_7D),
     getCellValue(SHEET_ID_30D, RANGE_30D)
   ]);
-
   console.log('DEBUG 7D:',  { sheet: SHEET_ID_7D,  range: RANGE_7D,  value: clicks7dRaw });
   console.log('DEBUG 30D:', { sheet: SHEET_ID_30D, range: RANGE_30D, value: clicks30dRaw });
 
