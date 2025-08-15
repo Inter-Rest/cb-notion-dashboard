@@ -2,9 +2,9 @@ name: Update nums.json from Notion
 
 on:
   schedule:
-    - cron: '0 16 * * *'  # 9:00 AM PT during PDT (UTC-7)
-    - cron: '0 17 * * *'  # 9:00 AM PT during PST (UTC-8)
-  workflow_dispatch: {}
+    # Runs every day at 9 AM Pacific (16:00 UTC)
+    - cron: '0 16 * * *'
+  workflow_dispatch:
 
 jobs:
   build:
