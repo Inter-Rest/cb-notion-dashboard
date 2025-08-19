@@ -2,39 +2,43 @@ name: Update nums.json from Notion
 
 on:
   schedule:
-    - cron: '0 16 * * *'  # 9:00 AM PT (DST)
-    - cron: '0 17 * * *'  # 9:00 AM PT (Standard Time)
+    - cron: '0 16 * * *'   # 9:00 AM PT (DST)
+    - cron: '0 17 * * *'   # 9:00 AM PT (standard)
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions: { contents: write }
+    permissions:
+      contents: write
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
 
-      - name: Install deps
+      - name: Install deps needed by the script
         run: |
           npm -y init
           npm i undici googleapis
 
       - name: Pull KPIs and clicks → assets/nums.json
         env:
-          NOTION_TOKEN:       ${{ secrets.NOTION_TOKEN }}
-          NOTION_DB_ID:       ${{ secrets.NOTION_DB_ID }}
-          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
-          SHEET_ID_HEALTH:    ${{ secrets.SHEET_ID_HEALTH }}
-          SHEET_ID_EXPORT:    ${{ secrets.SHEET_ID_EXPORT }}
-          RANGE_CLICKS_7D:    ${{ secrets.RANGE_CLICKS_7D }}
-          RANGE_CLICKS_30D:   ${{ secrets.RANGE_CLICKS_30D }}
-        run: node -e "global.fetch=require('undici').fetch; (async()=>{await import('./.github/scripts/notion_to_nums.mjs')})()"
+          NOTION_TOKEN:        ${{ secrets.NOTION_TOKEN }}
+          NOTION_DB_ID:        ${{ secrets.NOTION_DB_ID }}
+          GOOGLE_CREDENTIALS:  ${{ secrets.GOOGLE_CREDENTIALS }}
+          SHEET_ID_HEALTH:     ${{ secrets.SHEET_ID_HEALTH }}
+          SHEET_ID_EXPORT:     ${{ secrets.SHEET_ID_EXPORT }}
+          RANGE_CLICKS_7D:     ${{ secrets.RANGE_CLICKS_7D }}
+          RANGE_CLICKS_30D:    ${{ secrets.RANGE_CLICKS_30D }}
+        run: node -e "global.fetch=require('undici').fetch;(async()=>{await import('./.github/scripts/notion_to_nums.mjs')})()"
 
-      - name: Commit and push
+      - name: Commit and push updated nums.json
         run: |
-          git config user.name "github-actions"
-          git config user.email "actions@users.noreply.github.com"
-          git add assets/nums.json
-          git commit -m "chore: update nums.json" || exit 0
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # add both paths in case the script wrote two copies
+          git add assets/nums.json nums.json || true
+          git commit -m "chore: update nums.json" || echo "No changes to commit"
           git push
