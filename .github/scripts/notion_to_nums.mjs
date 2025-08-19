@@ -38,8 +38,33 @@ async function getCell(sheetId, range){
 
 /* Notion KPIs */
 async function fetchNotionKPIs(){
-  const monthLabel = new Date().toLocaleString('en-US', { month:'short', year:'numeric' }); // "Aug 2025"
-  
+  const monthLabel = new Date().toLocaleString('en-US', { month:'short', year:'numeric' }); // e.g. "Aug 2025"
+
+  // 1) Read DB schema to learn the Month property type
+  const dbMeta = await fetch(`https://api.notion.com/v1/databases/${NOTION_DB_ID}`, {
+    headers:{
+      'Authorization':`Bearer ${NOTION_TOKEN}`,
+      'Notion-Version':'2022-06-28'
+    }
+  });
+  if(!dbMeta.ok) throw new Error('DB meta: ' + await dbMeta.text());
+  const meta = await dbMeta.json();
+  const monthProp = meta.properties['Month'];
+  if(!monthProp) throw new Error('No "Month" property in DB');
+
+  // 2) Build the right filter for the property type
+  let filter;
+  if (monthProp.type === 'select') {
+    filter = { property:'Month', select: { equals: monthLabel } };
+  } else if (monthProp.type === 'title') {
+    filter = { property:'Month', title: { equals: monthLabel } };
+  } else if (monthProp.type === 'rich_text') {
+    filter = { property:'Month', rich_text: { equals: monthLabel } };
+  } else {
+    throw new Error(`Unsupported Month type: ${monthProp.type}`);
+  }
+
+  // 3) Query the row for the current month
   const res = await fetch(`https://api.notion.com/v1/databases/${NOTION_DB_ID}/query`,{
     method:'POST',
     headers:{
@@ -47,18 +72,34 @@ async function fetchNotionKPIs(){
       'Notion-Version':'2022-06-28',
       'Content-Type':'application/json'
     },
-    body: JSON.stringify({ sorts:[{ timestamp:'created_time', direction:'descending' }], page_size: 1 })
+    body: JSON.stringify({ filter, page_size: 1 })
   });
-  if(!res.ok) throw new Error(await res.text());
+  if(!res.ok) throw new Error('Query: ' + await res.text());
   const j = await res.json();
-  
-  if (!j.results?.length) throw new Error('No Notion KPI row found for ' + monthLabel);
-            
-  const p = j.results?.[0]?.properties || {};
-  const num = k => toNum(p[k]?.number ?? 0);
+  if(!j.results?.length) throw new Error(`No KPI row found for ${monthLabel}`);
+
+  const page  = j.results[0];
+  const p     = page.properties || {};
+  const num   = k => toNum(p[k]?.number ?? 0);
+
+  // 4) Log exactly what row/values are used
+  console.log('NOTION ROW', {
+    pageId: page.id,
+    monthLabel,
+    monthType: monthProp.type,
+    propsSeen: Object.keys(p),
+    values: {
+      eventsThisMonth:       p['Events this Month']?.number,
+      revenueThisMonthCurl:  p['This Month’s Revenue']?.number,
+      revenueThisMonthStraight: p["This Month's Revenue"]?.number,
+      eventsBookedThisMonth: p['Events Booked This Month']?.number,
+      ytdRevenue:            p['YTD Revenue']?.number
+    }
+  });
+
   return {
     eventsThisMonth:       num('Events this Month'),
-    revenueThisMonth:      num('This Month’s Revenue'),
+    revenueThisMonth:      num('This Month’s Revenue') || num("This Month's Revenue"),
     eventsBookedThisMonth: num('Events Booked This Month'),
     ytdRevenue:            num('YTD Revenue')
   };
