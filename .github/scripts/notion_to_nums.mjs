@@ -38,7 +38,8 @@ async function getCell(sheetId, range){
 
 /* Notion KPIs */
 async function fetchNotionKPIs(){
-  const monthLabel = new Date().toLocaleString('en-US', { month:'short', year:'numeric' }); // e.g. "Aug 2025"
+  const d = new Date();
+const monthLabel = `${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`; // "08-2025"
 
   // 1) Read DB schema to learn the Month property type
   const dbMeta = await fetch(`https://api.notion.com/v1/databases/${NOTION_DB_ID}`, {
@@ -72,7 +73,10 @@ async function fetchNotionKPIs(){
       'Notion-Version':'2022-06-28',
       'Content-Type':'application/json'
     },
-    body: JSON.stringify({ filter, page_size: 1 })
+    const body = JSON.stringify({
+  filter: { property: 'Month', rich_text: { equals: monthLabel } },
+  page_size: 1
+});
   });
   if(!res.ok) throw new Error('Query: ' + await res.text());
   const j = await res.json();
