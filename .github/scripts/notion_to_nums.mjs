@@ -38,35 +38,11 @@ async function getCell(sheetId, range){
 
 /* Notion KPIs */
 async function fetchNotionKPIs(){
-  // "08-2025" format to match your Month column
+  // Build "08-2025" to match your Month column
   const d = new Date();
   const monthLabel = `${String(d.getMonth() + 1).padStart(2,'0')}-${d.getFullYear()}`;
 
-  // 1) Read DB schema to learn the Month property type
-  const dbMeta = await fetch(`https://api.notion.com/v1/databases/${NOTION_DB_ID}`, {
-    headers:{
-      'Authorization':`Bearer ${NOTION_TOKEN}`,
-      'Notion-Version':'2022-06-28'
-    }
-  });
-  if(!dbMeta.ok) throw new Error('DB meta: ' + await dbMeta.text());
-  const meta = await dbMeta.json();
-  const monthProp = meta.properties['Month'];
-  if(!monthProp) throw new Error('No "Month" property in DB');
-
-  // 2) Build the right filter for the property type
-  let filter;
-  if (monthProp.type === 'select') {
-    filter = { property:'Month', select: { equals: monthLabel } };
-  } else if (monthProp.type === 'title') {
-    filter = { property:'Month', title: { equals: monthLabel } };
-  } else if (monthProp.type === 'rich_text') {
-    filter = { property:'Month', rich_text: { equals: monthLabel } };
-  } else {
-    throw new Error(`Unsupported Month type: ${monthProp.type}`);
-  }
-
-  // 3) Query the row for the current month
+  // Query current month row. Support text/title/select/formula.
   const res = await fetch(`https://api.notion.com/v1/databases/${NOTION_DB_ID}/query`,{
     method:'POST',
     headers:{
@@ -74,7 +50,17 @@ async function fetchNotionKPIs(){
       'Notion-Version':'2022-06-28',
       'Content-Type':'application/json'
     },
-    body: JSON.stringify({ filter, page_size: 1 })
+    body: JSON.stringify({
+      filter: {
+        or: [
+          { property:'Month', rich_text: { equals: monthLabel } },
+          { property:'Month', title:     { equals: monthLabel } },
+          { property:'Month', select:    { equals: monthLabel } },
+          { property:'Month', formula:   { string: { equals: monthLabel } } }
+        ]
+      },
+      page_size: 1
+    })
   });
   if(!res.ok) throw new Error('Query: ' + await res.text());
   const j = await res.json();
@@ -84,11 +70,10 @@ async function fetchNotionKPIs(){
   const p     = page.properties || {};
   const num   = k => toNum(p[k]?.number ?? 0);
 
-  // 4) Log exactly what row/values are used
+  // Log row and raw values for visibility
   console.log('NOTION ROW', {
     pageId: page.id,
     monthLabel,
-    monthType: monthProp.type,
     propsSeen: Object.keys(p),
     values: {
       eventsThisMonth:          p['Events this Month']?.number,
