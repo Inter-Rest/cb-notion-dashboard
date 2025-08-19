@@ -26,13 +26,13 @@ jobs:
 
       - name: Pull KPIs and clicks → assets/nums.json
         env:
-          NOTION_TOKEN:      ${{ secrets.NOTION_TOKEN }}
-          NOTION_DB_ID:      ${{ secrets.NOTION_DB_ID }}
-          GOOGLE_CREDENTIALS:${{ secrets.GOOGLE_CREDENTIALS }}
-          SHEET_ID_HEALTH:   ${{ secrets.SHEET_ID_HEALTH }}
-          SHEET_ID_EXPORT:   ${{ secrets.SHEET_ID_EXPORT }}
-          RANGE_CLICKS_7D:   ${{ secrets.RANGE_CLICKS_7D }}
-          RANGE_CLICKS_30D:  ${{ secrets.RANGE_CLICKS_30D }}
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DB_ID: ${{ secrets.NOTION_DB_ID }}
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+          SHEET_ID_HEALTH: ${{ secrets.SHEET_ID_HEALTH }}
+          SHEET_ID_EXPORT: ${{ secrets.SHEET_ID_EXPORT }}
+          RANGE_CLICKS_7D: ${{ secrets.RANGE_CLICKS_7D }}
+          RANGE_CLICKS_30D: ${{ secrets.RANGE_CLICKS_30D }}
         run: |
           node -e "global.fetch=require('undici').fetch;(async()=>{await import('./.github/scripts/notion_to_nums.mjs')})()"
 
