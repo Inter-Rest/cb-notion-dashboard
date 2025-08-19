@@ -1,112 +1,115 @@
-// Notion + Google Sheets → assets/nums.json
+// .github/scripts/notion_to_nums.mjs
+// Pull KPIs from Notion + Sheets → write assets/nums.json (and root nums.json for sanity)
+// Requires env: NOTION_TOKEN, NOTION_DB_ID, GOOGLE_CREDENTIALS,
+// SHEET_ID_HEALTH, SHEET_ID_EXPORT, RANGE_CLICKS_7D, RANGE_CLICKS_30D
+
 import fs from 'node:fs/promises';
-import { createRequire } from 'node:module';
-const require = createRequire(import.meta.url);
-const { google } = require('googleapis');
+import { resolve } from 'node:path';
+import process from 'node:process';
+import { google } from 'googleapis';
 
-/* env */
-const NOTION_TOKEN   = process.env.NOTION_TOKEN;
-const NOTION_DB_ID   = process.env.NOTION_DB_ID;
-const CREDS_JSON     = process.env.GOOGLE_CREDENTIALS;          // full JSON
-const SHEET_ID_7D    = process.env.SHEET_ID_HEALTH;              // same id ok
-const SHEET_ID_30D   = process.env.SHEET_ID_EXPORT;              // can be same
-const RANGE_7D       = process.env.RANGE_CLICKS_7D || 'GSC_Raw!B2';
-const RANGE_30D      = process.env.RANGE_CLICKS_30D || 'GSC_Raw!C2';
-const OUT_PATH       = 'public/assets/nums.json';
+// ---------- helpers ----------
+const cwd = process.cwd();
+const pAssets = resolve(cwd, 'assets/nums.json');
+const pRoot   = resolve(cwd, 'nums.json');
 
-/* utils */
-const toNum = v => { const n = Number(String(v ?? '').replace(/[, ]+/g,'')); return Number.isFinite(n) ? n : 0; };
-const i     = v => Math.round(toNum(v));
+const notionToken = process.env.NOTION_TOKEN;
+const dbId        = process.env.NOTION_DB_ID;
 
-/* Google auth (service account JSON from secret) */
-const creds = JSON.parse(CREDS_JSON);
-if (creds.private_key) creds.private_key = creds.private_key.replace(/\\n/g, '\n');
-const auth = new google.auth.GoogleAuth({
-  credentials: creds,
-  scopes: [
-    'https://www.googleapis.com/auth/spreadsheets.readonly',
-    'https://www.googleapis.com/auth/drive.readonly'
-  ]
-});
-await auth.getClient();
-const sheets = google.sheets({ version: 'v4', auth });
+function num(n){ return Number.isFinite(n) ? n : 0; }
+function i(n){ return Math.round(num(n)); }
 
-async function getCell(sheetId, range){
-  const r = await sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range });
-  return toNum(r.data.values?.[0]?.[0] ?? 0);
+async function writeJSON(path, data){
+  const json = JSON.stringify(data) + '\n';
+  await fs.mkdir(resolve(path, '..'), { recursive: true });
+  await fs.writeFile(path, json, 'utf8');
 }
 
-/* Notion KPIs */
-async function fetchNotionKPIs(){
-  // Build "08-2025" to match your Month Key
-  const d = new Date();
-  const monthKey = `${String(d.getMonth() + 1).padStart(2,'0')}-${d.getFullYear()}`;
+function credsFromEnv() {
+  const raw = process.env.GOOGLE_CREDENTIALS;
+  if (!raw) throw new Error('GOOGLE_CREDENTIALS env missing');
+  return JSON.parse(raw);
+}
 
-  const res = await fetch(`https://api.notion.com/v1/databases/${NOTION_DB_ID}/query`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${NOTION_TOKEN}`,
-      'Notion-Version': '2022-06-28',
-      'Content-Type': 'application/json'
+async function getCellValue({sheetId, range}) {
+  const auth = new google.auth.JWT({
+    email: credsFromEnv().client_email,
+    key:   credsFromEnv().private_key,
+    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly']
+  });
+  const sheets = google.sheets({version: 'v4', auth});
+  const r = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range
+  });
+  const v = r.data.values?.[0]?.[0];
+  return i(parseFloat(String(v).replace(/,/g,'')));
+}
+
+async function fetchLatestNotionRow(){
+  const res = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`,{
+    method:'POST',
+    headers:{
+      'Authorization': `Bearer ${notionToken}`,
+      'Notion-Version':'2022-06-28',
+      'Content-Type':'application/json'
     },
     body: JSON.stringify({
-      filter: {
-        property: 'Month Key',
-        formula: { string: { equals: monthKey } }
-      },
+      sorts:[{ timestamp:'created_time', direction:'descending' }],
       page_size: 1
     })
   });
-  if (!res.ok) throw new Error('Query: ' + await res.text());
+  if(!res.ok) throw new Error(await res.text());
   const j = await res.json();
-  if (!j.results?.length) throw new Error(`No KPI row found for ${monthKey}`);
+  const p = j.results?.[0]?.properties || {};
+  const n = k => num(p[k]?.number);
 
-  const p = j.results[0].properties || {};
-  const num = k => toNum(p[k]?.number ?? 0);
-
-  console.log('NOTION ROW', {
-    monthKey,
-    values: {
-      eventsThisMonth:          p['Events this Month']?.number,
-      revenueThisMonthCurl:     p['This Month’s Revenue']?.number,
-      revenueThisMonthStraight: p["This Month's Revenue"]?.number,
-      eventsBookedThisMonth:    p['Events Booked This Month']?.number,
-      ytdRevenue:               p['YTD Revenue']?.number
-    }
-  });
+  // raw values
+  const eventsThisMonth       = i(n('Events this Month'));
+  const revenueThisMonthCur   = n('This Month’s Revenue');       // may be float
+  const eventsBookedThisMonth = i(n('Events Booked This Month'));
+  const ytdRevenue            = i(n('YTD Revenue'));
 
   return {
-    eventsThisMonth:       num('Events this Month'),
-    revenueThisMonth:      num('This Month’s Revenue') || num("This Month's Revenue"),
-    eventsBookedThisMonth: num('Events Booked This Month'),
-    ytdRevenue:            num('YTD Revenue')
+    eventsThisMonth,
+    revenueThisMonth: i(revenueThisMonthCur),
+    eventsBookedThisMonth,
+    ytdRevenue
   };
 }
-/* run */
-try{
-  const [kpis, clicks7dRaw, clicks30dRaw] = await Promise.all([
-    fetchNotionKPIs(),
-    getCell(SHEET_ID_7D,  RANGE_7D),
-    getCell(SHEET_ID_30D, RANGE_30D)
-  ]);
+
+async function main(){
+  console.log('CWD:', cwd);
+  console.log('Writing to:', pAssets, 'and', pRoot);
+
+  // 1) Notion KPIs
+  const notion = await fetchLatestNotionRow();
+  console.log('NOTION values:', notion);
+
+  // 2) Sheets clicks
+  const clicks7d  = await getCellValue({ sheetId: process.env.SHEET_ID_HEALTH, range: process.env.RANGE_CLICKS_7D });
+  const clicks30d = await getCellValue({ sheetId: process.env.SHEET_ID_EXPORT, range: process.env.RANGE_CLICKS_30D });
+  console.log('SHEETS values:', {clicks7d, clicks30d});
 
   const out = {
-    eventsThisMonth:       i(kpis.eventsThisMonth),
-    revenueThisMonth:      i(kpis.revenueThisMonth),
-    eventsBookedThisMonth: i(kpis.eventsBookedThisMonth),
-    ytdRevenue:            i(kpis.ytdRevenue),
-    clicks7d:              i(clicks7dRaw),
-    clicks30d:             i(clicks30dRaw)
+    eventsThisMonth:       i(notion.eventsThisMonth),
+    revenueThisMonth:      i(notion.revenueThisMonth),
+    eventsBookedThisMonth: i(notion.eventsBookedThisMonth),
+    ytdRevenue:            i(notion.ytdRevenue),
+    clicks7d:              i(clicks7d),
+    clicks30d:             i(clicks30d)
   };
 
-  await fs.mkdir('public', { recursive: true });
-await fs.writeFile('public/nums.json', JSON.stringify(out), 'utf8');
+  // optional timestamp helps visibility (ignored by frontend)
+  const outWithStamp = { ...out, _updatedAt: new Date().toISOString() };
 
-await fs.mkdir('public/assets', { recursive: true });
-await fs.writeFile('public/assets/nums.json', JSON.stringify(out), 'utf8');
+  await writeJSON(pAssets, outWithStamp);
+  await writeJSON(pRoot,   outWithStamp);
 
-console.log('Wrote /nums.json and /assets/nums.json', out);
-} catch (e) {
-  console.error('ERROR:', e?.stack || e);
-  process.exit(1);
+  const after = JSON.parse(await fs.readFile(pAssets, 'utf8'));
+  console.log('WROTE assets/nums.json →', after);
+
+  return out; // for log
 }
+
+await main();
