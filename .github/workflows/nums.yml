@@ -3,7 +3,7 @@ name: Update nums.json from Notion
 on:
   schedule:
     - cron: '0 16 * * *'  # 9:00 AM PT (DST)
-    - cron: '0 17 * * *'  # 9:00 AM PT (standard)
+    - cron: '0 17 * * *'  # 9:00 AM PT (Standard Time)
   workflow_dispatch:
 
 jobs:
@@ -14,10 +14,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
+
       - name: Install deps
         run: |
           npm -y init
           npm i undici googleapis
+
       - name: Pull KPIs and clicks → assets/nums.json
         env:
           NOTION_TOKEN:       ${{ secrets.NOTION_TOKEN }}
@@ -28,6 +30,7 @@ jobs:
           RANGE_CLICKS_7D:    ${{ secrets.RANGE_CLICKS_7D }}
           RANGE_CLICKS_30D:   ${{ secrets.RANGE_CLICKS_30D }}
         run: node -e "global.fetch=require('undici').fetch; (async()=>{await import('./.github/scripts/notion_to_nums.mjs')})()"
+
       - name: Commit and push
         run: |
           git config user.name "github-actions"
