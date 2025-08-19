@@ -51,6 +51,9 @@ async function fetchNotionKPIs(){
   });
   if(!res.ok) throw new Error(await res.text());
   const j = await res.json();
+  
+  if (!j.results?.length) throw new Error('No Notion KPI row found for ' + monthLabel);
+            
   const p = j.results?.[0]?.properties || {};
   const num = k => toNum(p[k]?.number ?? 0);
   return {
