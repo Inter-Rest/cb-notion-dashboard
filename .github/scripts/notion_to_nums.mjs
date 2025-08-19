@@ -76,7 +76,7 @@ try{
     clicks30d:             i(clicks30dRaw)
   };
 
-  await fs.mkdir('assets', { recursive: true });
+  + await fs.mkdir('public/assets', { recursive: true });
   await fs.writeFile(OUT_PATH, JSON.stringify(out), 'utf8');
   console.log('Wrote', OUT_PATH, out);
 } catch (e) {
