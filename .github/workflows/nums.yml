@@ -11,6 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    concurrency:
+      group: nums-json
+      cancel-in-progress: false
 
     steps:
       - uses: actions/checkout@v4
@@ -48,9 +51,15 @@ jobs:
           if [ -n "$changed" ]; then
             git config user.name  "github-actions"
             git config user.email "actions@users.noreply.github.com"
-            git add assets/nums.json nums.json
-            git commit -m "chore: update nums.json [skip ci]"
-            git push
+
+            # make sure we’re up to date before pushing
+            git fetch origin
+            git checkout "$GITHUB_REF_NAME"
+            git pull --rebase origin "$GITHUB_REF_NAME" || true
+
+            git add assets/nums.json nums.json || true
+            git commit -m "chore: update nums.json [skip ci]" || true
+            git push origin HEAD:"$GITHUB_REF_NAME"
             echo "NO_CHANGE=false" >> "$GITHUB_ENV"
             echo "✅ pushed updated assets/nums.json"
           else
