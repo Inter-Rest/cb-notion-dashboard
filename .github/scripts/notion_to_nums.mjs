@@ -38,43 +38,34 @@ async function getCell(sheetId, range){
 
 /* Notion KPIs */
 async function fetchNotionKPIs(){
-  // Build "08-2025" to match your Month column
+  // Build "08-2025" to match your Month Key
   const d = new Date();
-  const monthLabel = `${String(d.getMonth() + 1).padStart(2,'0')}-${d.getFullYear()}`;
+  const monthKey = `${String(d.getMonth() + 1).padStart(2,'0')}-${d.getFullYear()}`;
 
-  // Query current month row. Support text/title/select/formula.
-  const res = await fetch(`https://api.notion.com/v1/databases/${NOTION_DB_ID}/query`,{
-    method:'POST',
-    headers:{
-      'Authorization':`Bearer ${NOTION_TOKEN}`,
-      'Notion-Version':'2022-06-28',
-      'Content-Type':'application/json'
+  const res = await fetch(`https://api.notion.com/v1/databases/${NOTION_DB_ID}/query`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${NOTION_TOKEN}`,
+      'Notion-Version': '2022-06-28',
+      'Content-Type': 'application/json'
     },
     body: JSON.stringify({
       filter: {
-        or: [
-          { property:'Month', rich_text: { equals: monthLabel } },
-          { property:'Month', title:     { equals: monthLabel } },
-          { property:'Month', select:    { equals: monthLabel } },
-          { property:'Month', formula:   { string: { equals: monthLabel } } }
-        ]
+        property: 'Month Key',
+        formula: { string: { equals: monthKey } }
       },
       page_size: 1
     })
   });
-  if(!res.ok) throw new Error('Query: ' + await res.text());
+  if (!res.ok) throw new Error('Query: ' + await res.text());
   const j = await res.json();
-  if(!j.results?.length) throw new Error(`No KPI row found for ${monthLabel}`);
+  if (!j.results?.length) throw new Error(`No KPI row found for ${monthKey}`);
 
-  const page  = j.results[0];
-  const p     = page.properties || {};
-  const num   = k => toNum(p[k]?.number ?? 0);
+  const p = j.results[0].properties || {};
+  const num = k => toNum(p[k]?.number ?? 0);
 
-  // Log row and raw values for visibility
   console.log('NOTION ROW', {
-    pageId: page.id,
-    monthLabel,
-    propsSeen: Object.keys(p),
+    monthKey,
     values: {
       eventsThisMonth:          p['Events this Month']?.number,
       revenueThisMonthCurl:     p['This Month’s Revenue']?.number,
@@ -91,7 +82,6 @@ async function fetchNotionKPIs(){
     ytdRevenue:            num('YTD Revenue')
   };
 }
-
 /* run */
 try{
   const [kpis, clicks7dRaw, clicks30dRaw] = await Promise.all([
