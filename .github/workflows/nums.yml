@@ -36,5 +36,5 @@ jobs:
           git config user.name "github-actions"
           git config user.email "actions@users.noreply.github.com"
           git add assets/nums.json
-          git commit -m "chore: update nums.json [skip ci]" || exit 0
+          git commit -m "chore: update nums.json" || exit 0
           git push
