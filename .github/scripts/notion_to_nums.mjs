@@ -12,7 +12,7 @@ const SHEET_ID_7D    = process.env.SHEET_ID_HEALTH;              // same id ok
 const SHEET_ID_30D   = process.env.SHEET_ID_EXPORT;              // can be same
 const RANGE_7D       = process.env.RANGE_CLICKS_7D || 'GSC_Raw!B2';
 const RANGE_30D      = process.env.RANGE_CLICKS_30D || 'GSC_Raw!C2';
-const OUT_PATH       = 'assets/nums.json';
+const OUT_PATH       = 'public/assets/nums.json';
 
 /* utils */
 const toNum = v => { const n = Number(String(v ?? '').replace(/[, ]+/g,'')); return Number.isFinite(n) ? n : 0; };
