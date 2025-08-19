@@ -1,0 +1,6 @@
+/assets/nums.json
+  Cache-Control: no-store
+  Content-Type: application/json; charset=utf-8
+/public/assets/nums.json
+  Cache-Control: no-store
+  Content-Type: application/json; charset=utf-8
