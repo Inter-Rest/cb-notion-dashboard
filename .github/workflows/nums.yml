@@ -14,51 +14,52 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          persist-credentials: true
-          fetch-depth: 0
 
       - uses: actions/setup-node@v4
-        with: { node-version: '20' }
+        with:
+          node-version: '20'
 
       - name: Install deps
         run: |
           npm -y init
           npm i undici googleapis
 
-      - name: Build nums.json
+      - name: Pull KPIs and clicks → assets/nums.json
         env:
-          NOTION_TOKEN:        ${{ secrets.NOTION_TOKEN }}
-          NOTION_DB_ID:        ${{ secrets.NOTION_DB_ID }}
-          GOOGLE_CREDENTIALS:  ${{ secrets.GOOGLE_CREDENTIALS }}
-          SHEET_ID_HEALTH:     ${{ secrets.SHEET_ID_HEALTH }}
-          SHEET_ID_EXPORT:     ${{ secrets.SHEET_ID_EXPORT }}
-          RANGE_CLICKS_7D:     ${{ secrets.RANGE_CLICKS_7D }}
-          RANGE_CLICKS_30D:    ${{ secrets.RANGE_CLICKS_30D }}
-        run: node -e "global.fetch=require('undici').fetch;(async()=>{await import('./.github/scripts/notion_to_nums.mjs')})()"
-
-      - name: Show diff (debug)
+          NOTION_TOKEN:      ${{ secrets.NOTION_TOKEN }}
+          NOTION_DB_ID:      ${{ secrets.NOTION_DB_ID }}
+          GOOGLE_CREDENTIALS:${{ secrets.GOOGLE_CREDENTIALS }}
+          SHEET_ID_HEALTH:   ${{ secrets.SHEET_ID_HEALTH }}
+          SHEET_ID_EXPORT:   ${{ secrets.SHEET_ID_EXPORT }}
+          RANGE_CLICKS_7D:   ${{ secrets.RANGE_CLICKS_7D }}
+          RANGE_CLICKS_30D:  ${{ secrets.RANGE_CLICKS_30D }}
         run: |
-          echo "::group::git status"
+          node -e "global.fetch=require('undici').fetch;(async()=>{await import('./.github/scripts/notion_to_nums.mjs')})()"
+
+      - name: Commit if nums.json changed
+        run: |
+          echo "== Git status before commit =="
           git status --porcelain
-          echo "::endgroup::"
-          echo "::group::diff assets/nums.json"
-          git diff -- assets/nums.json || true
-          echo "::endgroup::"
 
-      - name: Commit and push updated nums.json
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          CHANGED=0
-          git diff --quiet -- assets/nums.json || CHANGED=1
-          git diff --quiet -- nums.json        || CHANGED=1
-
-          if [ "$CHANGED" = "1" ]; then
-            git add assets/nums.json nums.json || true
-            git commit -m "chore: update nums.json"
-            git push
+          if git diff --quiet --exit-code -- assets/nums.json; then
+            echo "NO_CHANGE=true" >> $GITHUB_ENV
+            echo "ℹ️ No changes to assets/nums.json"
           else
-            echo "No changes detected; skip commit."
+            git config user.name  "github-actions"
+            git config user.email "actions@users.noreply.github.com"
+            git add assets/nums.json
+            git commit -m "chore: update nums.json [skip ci]"
+            git push
+            echo "NO_CHANGE=false" >> $GITHUB_ENV
+            echo "✅ nums.json updated & pushed"
+          fi
+
+      - name: Summary
+        run: |
+          if [ "$NO_CHANGE" = "true" ]; then
+            echo "## Result" >> $GITHUB_STEP_SUMMARY
+            echo "No update. nums.json already current." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## Result" >> $GITHUB_STEP_SUMMARY
+            echo "nums.json changed and was pushed to main." >> $GITHUB_STEP_SUMMARY
           fi
