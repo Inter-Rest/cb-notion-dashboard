@@ -38,6 +38,8 @@ async function getCell(sheetId, range){
 
 /* Notion KPIs */
 async function fetchNotionKPIs(){
+  const monthLabel = new Date().toLocaleString('en-US', { month:'short', year:'numeric' }); // "Aug 2025"
+  
   const res = await fetch(`https://api.notion.com/v1/databases/${NOTION_DB_ID}/query`,{
     method:'POST',
     headers:{
