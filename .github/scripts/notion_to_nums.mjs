@@ -38,8 +38,9 @@ async function getCell(sheetId, range){
 
 /* Notion KPIs */
 async function fetchNotionKPIs(){
+  // "08-2025" format to match your Month column
   const d = new Date();
-const monthLabel = `${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`; // "08-2025"
+  const monthLabel = `${String(d.getMonth() + 1).padStart(2,'0')}-${d.getFullYear()}`;
 
   // 1) Read DB schema to learn the Month property type
   const dbMeta = await fetch(`https://api.notion.com/v1/databases/${NOTION_DB_ID}`, {
@@ -73,10 +74,7 @@ const monthLabel = `${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear
       'Notion-Version':'2022-06-28',
       'Content-Type':'application/json'
     },
-    const body = JSON.stringify({
-  filter: { property: 'Month', rich_text: { equals: monthLabel } },
-  page_size: 1
-});
+    body: JSON.stringify({ filter, page_size: 1 })
   });
   if(!res.ok) throw new Error('Query: ' + await res.text());
   const j = await res.json();
@@ -93,11 +91,11 @@ const monthLabel = `${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear
     monthType: monthProp.type,
     propsSeen: Object.keys(p),
     values: {
-      eventsThisMonth:       p['Events this Month']?.number,
-      revenueThisMonthCurl:  p['This Month’s Revenue']?.number,
+      eventsThisMonth:          p['Events this Month']?.number,
+      revenueThisMonthCurl:     p['This Month’s Revenue']?.number,
       revenueThisMonthStraight: p["This Month's Revenue"]?.number,
-      eventsBookedThisMonth: p['Events Booked This Month']?.number,
-      ytdRevenue:            p['YTD Revenue']?.number
+      eventsBookedThisMonth:    p['Events Booked This Month']?.number,
+      ytdRevenue:               p['YTD Revenue']?.number
     }
   });
 
@@ -126,7 +124,7 @@ try{
     clicks30d:             i(clicks30dRaw)
   };
 
-  + await fs.mkdir('public/assets', { recursive: true });
+  await fs.mkdir('public/assets', { recursive: true });
   await fs.writeFile(OUT_PATH, JSON.stringify(out), 'utf8');
   console.log('Wrote', OUT_PATH, out);
 } catch (e) {
