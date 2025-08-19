@@ -99,9 +99,13 @@ try{
     clicks30d:             i(clicks30dRaw)
   };
 
-  await fs.mkdir('public/assets', { recursive: true });
-  await fs.writeFile(OUT_PATH, JSON.stringify(out), 'utf8');
-  console.log('Wrote', OUT_PATH, out);
+  await fs.mkdir('public', { recursive: true });
+await fs.writeFile('public/nums.json', JSON.stringify(out), 'utf8');
+
+await fs.mkdir('public/assets', { recursive: true });
+await fs.writeFile('public/assets/nums.json', JSON.stringify(out), 'utf8');
+
+console.log('Wrote /nums.json and /assets/nums.json', out);
 } catch (e) {
   console.error('ERROR:', e?.stack || e);
   process.exit(1);
