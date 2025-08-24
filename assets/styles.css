@@ -121,3 +121,18 @@ a.card * { text-decoration: none !important; }
 @media (max-width:768px){
   .metrics{ grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
+
+/* Remove default link styling for cards/metrics */
+a.card,
+a.card:link,
+a.card:visited,
+.metrics a,
+.metrics a:link,
+.metrics a:visited {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Keep hover clean */
+a.card:hover .title,
+a.card:hover .value { text-decoration: none; }
