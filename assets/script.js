@@ -12,16 +12,16 @@
     a.href = url;
   };
 
-  set('lnk-prompts','prompts');
+  set('lnk-health','health');
   set('lnk-outreach','outreach');
   set('lnk-inventory','inventory');
   set('lnk-seo','seo');
   set('lnk-perf','perf');
-  set('lnk-sops','sops');
+  set('lnk-kpi','kpi');
   set('lnk-automation','automation');
   set('lnk-events','events');
   set('lnk-training','training');
-  set('lnk-revenue','revenue');
+  set('lnk-bookings','bookings');
 })();
 
 /* =========================================
