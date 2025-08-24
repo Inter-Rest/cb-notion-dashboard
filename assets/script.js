@@ -1,150 +1,132 @@
-/* =========================================================
-   assets/script.js — full replacement (no <script> wrapper)
-   - Robust Notion links (app-first, web fallback)
-   - Metrics injection from /assets/nums.json (no decimals, $)
-   ========================================================= */
+/* assets/script.js — full replacement */
 
-/* ---------- helpers ---------- */
+/* =========================
+   0) Helpers
+   ========================= */
 function normalizeWeb(url) {
-  if (!url) return '';
-  let u = String(url).trim();
-  if (u.startsWith('notion://')) u = 'https://' + u.slice('notion://'.length);
-  return u.replace(/^http:\/\//i, 'https://');
+  if (!url) return "";
+  return String(url).replace(/^notion:\/\//, "https://");
 }
 function toAppUrl(webUrl) {
-  return webUrl ? webUrl.replace(/^https:\/\//i, 'notion://') : '';
+  return String(webUrl).replace(
+    /^https:\/\/www\.notion\.so\//,
+    "notion://www.notion.so/"
+  );
 }
-function openPreferApp(appUrl, webUrl) {
+function openTop(appUrl, webUrl) {
+  const nav = (window.top || window);
   try {
-    const nav = (window.top || window);
-    if (appUrl) nav.location.href = appUrl;
-    setTimeout(() => { if (webUrl) nav.location.href = webUrl; }, 600);
-  } catch (_) {
-    if (webUrl) window.location.href = webUrl;
+    // Try deep-linking into the Notion app first
+    nav.location.href = appUrl;
+    // Fallback to web after a short delay
+    setTimeout(() => { nav.location.href = webUrl; }, 700);
+  } catch {
+    window.location.href = webUrl;
   }
 }
 
-/* ---------- 1) Module links ---------- */
-const ID_TO_KEY = {
-  'lnk-health':'health',
-  'lnk-outreach':'outreach',
-  'lnk-inventory':'inventory',
-  'lnk-seo':'seo',
-  'lnk-perf':'perf',
-  'lnk-kpi':'kpi',
-  'lnk-automation':'automation',
-  'lnk-events':'events',
-  'lnk-training':'training',
-  'lnk-bookings':'bookings',
-};
+/* =========================================
+   1) Module links → set hrefs + open in top
+   ========================================= */
+(function () {
+  const L = window.CB_LINKS || {};
 
-function applyLinksOnce() {
-  const L = window.CB_LINKS;
-  if (!L) return false;
-  let setCount = 0;
-  for (const [id, key] of Object.entries(ID_TO_KEY)) {
+  // Map element id → key in CB_LINKS (matches your updated index.html)
+  const MAP = {
+    "lnk-bookings":   "bookings",
+    "lnk-kpi":        "kpi",
+    "lnk-health":     "health",
+    "lnk-perf":       "perf",
+    "lnk-outreach":   "outreach",
+    "lnk-inventory":  "inventory",
+    "lnk-seo":        "seo",
+    "lnk-automation": "automation",
+    "lnk-events":     "events",
+    "lnk-training":   "training"
+  };
+
+  Object.entries(MAP).forEach(([id, key]) => {
     const a = document.getElementById(id);
-    const v = L[key];
-    if (a && v) {
-      a.href = normalizeWeb(v);
-      setCount++;
+    if (!a) return;
+    const webUrl = normalizeWeb(L[key] || a.getAttribute("data-fallback") || "");
+    if (!webUrl) return;
+    a.setAttribute("href", webUrl);
+    a.setAttribute("target", "_top");             // safety if JS is blocked
+    a.setAttribute("rel", "noopener noreferrer");
+
+    // App-first open, break out of the Notion embed
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+      const appUrl = toAppUrl(webUrl);
+      openTop(appUrl, webUrl);
+    });
+  });
+})();
+
+/* ===================================================
+   2) Metrics: values + click-through (top-level open)
+   =================================================== */
+(function () {
+  const L = window.CB_LINKS || {};
+  const N = window.CB_NUMS  || {};
+
+  function wireMetric(tileId, valueKey, linkKey){
+    const tile = document.getElementById(tileId);
+    if(!tile) return;
+
+    // inject value from in-memory (if present)
+    const v = N[valueKey];
+    if(v != null){
+      const el = tile.querySelector('.value');
+      if(el) el.textContent = String(v);
+    }
+
+    // click-through to detail
+    const href = L[linkKey];
+    if(href){
+      const webUrl = normalizeWeb(href);
+      const appUrl = toAppUrl(webUrl);
+      tile.style.cursor = 'pointer';
+      tile.addEventListener('click', () => openTop(appUrl, webUrl));
     }
   }
-  return setCount > 0;
-}
 
-function initLinks() {
-  // Try now, then poll briefly until CB_LINKS/DOM are ready
-  if (applyLinksOnce()) return;
-  let tries = 0;
-  const t = setInterval(() => {
-    tries++;
-    if (applyLinksOnce() || tries > 32) clearInterval(t);
-  }, 250);
-
-  // Click fallback: even if href is "#", resolve from CB_LINKS
-  document.addEventListener('click', (e) => {
-    const a = e.target.closest('a[id^="lnk-"]');
-    if (!a) return;
-
-    const key = ID_TO_KEY[a.id];
-    const L = window.CB_LINKS || {};
-    let web = a.getAttribute('href');
-    if (!web || web === '#') web = L?.[key];
-    web = normalizeWeb(web);
-    if (!web) return;
-
-    e.preventDefault();
-    openPreferApp(toAppUrl(web), web);
-  });
-}
-
-/* ---------- 2) Metric tiles ---------- */
-function wireMetric(tileId, valueKey, linkKey) {
-  const tile = document.getElementById(tileId);
-  if (!tile) return;
-
-  const L = window.CB_LINKS || {};
-  const href = L[linkKey];
-  if (href) {
-    tile.style.cursor = 'pointer';
-    tile.addEventListener('click', () => {
-      const web = normalizeWeb(href);
-      openPreferApp(toAppUrl(web), web);
-    });
-  }
-}
-
-function setMetricValue(id, val, money = false) {
-  if (val == null) return;
-  const el = document.querySelector(`#${id} .value`);
-  if (!el) return;
-  if (money) {
-    const n = Math.round(Number(val) || 0);
-    el.textContent = n.toLocaleString(undefined, { style: 'currency', currency: 'USD' }).replace('.00','');
-  } else {
-    el.textContent = String(Math.round(Number(val) || 0));
-  }
-}
-
-async function loadMetrics() {
-  // 1) start with any inline globals (if present)
-  const N = window.CB_NUMS || {};
-  if (Object.keys(N).length) {
-    setMetricValue('metric-events-this-month',        N.eventsThisMonth);
-    setMetricValue('metric-revenue-this-month',       N.revenueThisMonth, true);
-    setMetricValue('metric-events-booked-this-month', N.eventsBookedThisMonth);
-    setMetricValue('metric-ytd-revenue',              N.ytdRevenue, true);
-    setMetricValue('metric-clicks-7d',                N.clicks7d);
-    setMetricValue('metric-clicks-30d',               N.clicks30d);
-  }
-
-  // 2) then fetch the latest file (overrides the above)
-  try {
-    const r = await fetch('/assets/nums.json', { cache: 'no-store' });
-    if (!r.ok) return;
-    const M = await r.json();
-    setMetricValue('metric-events-this-month',        M.eventsThisMonth);
-    setMetricValue('metric-revenue-this-month',       M.revenueThisMonth, true);
-    setMetricValue('metric-events-booked-this-month', M.eventsBookedThisMonth);
-    setMetricValue('metric-ytd-revenue',              M.ytdRevenue, true);
-    setMetricValue('metric-clicks-7d',                M.clicks7d);
-    setMetricValue('metric-clicks-30d',               M.clicks30d);
-  } catch {}
-}
-
-function initMetricTiles() {
-  wireMetric('metric-events-this-month',        'eventsThisMonth',       'metricEventsThisMonth');
+  /* Top row */
   wireMetric('metric-revenue-this-month',       'revenueThisMonth',      'metricRevenueThisMonth');
-  wireMetric('metric-events-booked-this-month', 'eventsBookedThisMonth', 'metricEventsBookedThisMonth');
   wireMetric('metric-ytd-revenue',              'ytdRevenue',            'metricYTDRevenue');
-  wireMetric('metric-clicks-7d',                'clicks7d',              'metricClicks7d');
-  wireMetric('metric-clicks-30d',               'clicks30d',             'metricClicks30d');
-}
+  wireMetric('metric-events-this-month',        'eventsThisMonth',       'metricEventsThisMonth');
+  wireMetric('metric-events-booked-this-month', 'eventsBookedThisMonth', 'metricEventsBookedThisMonth');
 
-/* ---------- boot ---------- */
-window.addEventListener('DOMContentLoaded', () => {
-  initLinks();
-  initMetricTiles();
-  loadMetrics();
-});
+  /* Clicks row */
+  wireMetric('metric-clicks-7d',  'clicks7d',  'metricClicks7d');
+  wireMetric('metric-clicks-30d', 'clicks30d', 'metricClicks30d');
+})();
+
+/* =======================================
+   3) Load static metrics JSON (no-cache)
+   ======================================= */
+(async function(){
+  try{
+    const r = await fetch('/assets/nums.json', { cache: 'no-store' });
+    if(!r.ok) return;
+    const M = await r.json();
+
+    const set = (id,val, money=false) => {
+      if(val==null) return;
+      const el = document.querySelector(`#${id} .value`);
+      if(!el) return;
+      if (money) {
+        el.textContent = '$' + Number(val).toLocaleString('en-US', { maximumFractionDigits: 0 });
+      } else {
+        el.textContent = Number(val).toLocaleString('en-US', { maximumFractionDigits: 0 });
+      }
+    };
+
+    set('metric-events-this-month',        M.eventsThisMonth);
+    set('metric-revenue-this-month',       M.revenueThisMonth, true);
+    set('metric-events-booked-this-month', M.eventsBookedThisMonth);
+    set('metric-ytd-revenue',              M.ytdRevenue, true);
+    set('metric-clicks-7d',                M.clicks7d);
+    set('metric-clicks-30d',               M.clicks30d);
+  }catch(e){}
+})();
