@@ -1,143 +1,167 @@
-/* assets/script.js — full replacement */
-
+<!-- /assets/script.js -->
 /* =========================
-   1) Module links → set hrefs
+   cb-notion-dashboard script
    ========================= */
-(function () {
-  const L = window.CB_LINKS || {};
-  const set = (id, key) => {
-    const a = document.getElementById(id);
-    if (!a || !L[key]) return;
-    const url = String(L[key]).replace('notion://', 'https://'); // normalize
-    a.href = url;
-  };
 
-  set('lnk-health','health');
-  set('lnk-outreach','outreach');
-  set('lnk-inventory','inventory');
-  set('lnk-seo','seo');
-  set('lnk-perf','perf');
-  set('lnk-kpi','kpi');
-  set('lnk-automation','automation');
-  set('lnk-events','events');
-  set('lnk-training','training');
-  set('lnk-bookings','bookings');
-})();
-
-/* =========================================
-   2) App-first open for all dashboard cards
-   ========================================= */
 (function () {
-  function openNotion(appUrl, webUrl) {
+  // Wait until DOM is ready
+  function onReady(fn){ 
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', fn, {once:true});
+    } else { fn(); }
+  }
+
+  // Resolve a config link to a normal web URL
+  function toWebUrl(raw){
+    if (!raw) return '';
+    let url = String(raw).trim();
+    // normalize notion:// → https://
+    url = url.replace(/^notion:\/\//i, 'https://');
+    return url;
+  }
+
+  // Build a Notion app deep link if host is notion.so
+  function toAppUrl(webUrl){
+    try {
+      const u = new URL(webUrl);
+      if (u.hostname.endsWith('notion.so')) {
+        return webUrl.replace(/^https:\/\//i, 'notion://');
+      }
+    } catch(_){}
+    return ''; // non-Notion or invalid → no app deep link
+  }
+
+  // App-first open with fallback to web
+  function openNotionPreferApp(webUrl){
+    const appUrl = toAppUrl(webUrl);
+    if (!appUrl){
+      // Non‑Notion link → just follow
+      window.location.href = webUrl;
+      return;
+    }
     try {
       const nav = (window.top || window);
-      nav.location.href = appUrl;                         // try app deep link
-      setTimeout(() => { nav.location.href = webUrl; }, 700); // web fallback
+      nav.location.href = appUrl;
+      setTimeout(() => { nav.location.href = webUrl; }, 700);
     } catch (_) {
       window.location.href = webUrl;
     }
   }
 
-  document.querySelectorAll('a[id^="lnk-"]').forEach((a) => {
+  // Wire a single card
+  function wireCard(a, webUrl){
+    a.href = webUrl || '#';
     a.addEventListener('click', (e) => {
-      const webUrl = a.getAttribute('href');
-      if (!webUrl || webUrl === '#') return;
-      const appUrl = webUrl.replace('https://www.notion.so/','notion://www.notion.so/');
+      const href = a.getAttribute('href');
+      if (!href || href === '#') return; // no link set → let the click do nothing
       e.preventDefault();
-      openNotion(appUrl, webUrl);
+      openNotionPreferApp(href);
+    }, {passive:false});
+  }
+
+  // Try to set links now; if CB_LINKS not ready, retry for a short window
+  function initLinksWithRetry(){
+    const L = (window.CB_LINKS || {});
+    const idsToKeys = {
+      'lnk-health':'health',
+      'lnk-outreach':'outreach',
+      'lnk-inventory':'inventory',
+      'lnk-seo':'seo',
+      'lnk-perf':'perf',
+      'lnk-kpi':'kpi',
+      'lnk-automation':'automation',
+      'lnk-events':'events',
+      'lnk-training':'training',
+      'lnk-bookings':'bookings'
+    };
+
+    let setCount = 0;
+    Object.entries(idsToKeys).forEach(([id,key]) => {
+      const a = document.getElementById(id);
+      if (!a) return;
+      const val = L[key];
+      const webUrl = toWebUrl(val);
+      if (webUrl) { setCount++; }
+      wireCard(a, webUrl);
     });
-  });
-})();
 
-/* ===================================================
-   3) Metrics: local config numbers + click-through links
-   =================================================== */
-(function () {
-  const L = window.CB_LINKS || {};
-  const N = window.CB_NUMS  || {};
-
-  function openMetricLink(link){
-    if(!link || link === '#') return;
-    const webUrl = String(link).replace('notion://','https://');
-    const appUrl = webUrl.replace('https://www.notion.so/','notion://www.notion.so/');
-    try {
-      const nav = (window.top || window);
-      nav.location.href = appUrl;
-      setTimeout(() => { nav.location.href = webUrl; }, 700);
-    } catch(_) {
-      window.location.href = webUrl;
+    // If nothing was set, retry a few times while config loads
+    if (setCount === 0) {
+      let attempts = 0;
+      const t = setInterval(() => {
+        attempts++;
+        const L2 = (window.CB_LINKS || {});
+        let any = 0;
+        Object.entries(idsToKeys).forEach(([id,key]) => {
+          const a = document.getElementById(id);
+          if (!a) return;
+          if (a.getAttribute('href') && a.getAttribute('href') !== '#') return;
+          const webUrl = toWebUrl(L2[key]);
+          if (webUrl){
+            a.setAttribute('href', webUrl);
+            any++;
+          }
+        });
+        if (any || attempts >= 10) clearInterval(t); // try up to ~2s (10 * 200ms)
+      }, 200);
     }
   }
 
-  function wireMetric(tileId, valueKey, linkKey){
-    const tile = document.getElementById(tileId);
-    if(!tile) return;
+  // Metric tiles: value fill + click-through
+  function wireMetrics(){
+    const L = (window.CB_LINKS || {});
+    const N = (window.CB_NUMS  || {});
+    const fmtInt = (v) => (v==null ? '' : String(Math.round(Number(v)||0)));
+    const fmtMoney = (v) => {
+      const n = Math.round(Number(v)||0);
+      return n.toLocaleString('en-US', {style:'currency', currency:'USD', maximumFractionDigits:0});
+    };
 
-    // initial value from CB_NUMS (can be overwritten by live fetch)
-    const v = N[valueKey];
-    if(v != null){
-      const el = tile.querySelector('.value');
-      if(el) el.textContent = String(v);
+    function setValue(tileId, value, money=false){
+      const el = document.querySelector(`#${tileId} .value`);
+      if (!el) return;
+      el.textContent = money ? fmtMoney(value) : fmtInt(value);
     }
 
-    // click-through
-    const href = L[linkKey];
-    if(href && href !== '#'){
+    function makeClickable(tileId, linkKey){
+      const tile = document.getElementById(tileId);
+      const link = L[linkKey];
+      const webUrl = toWebUrl(link);
+      if (!tile || !webUrl) return;
       tile.style.cursor = 'pointer';
-      tile.addEventListener('click', () => openMetricLink(href));
+      tile.addEventListener('click', () => openNotionPreferApp(webUrl));
     }
+
+    // Fill values from CB_NUMS (already loaded by fetch below)
+    setValue('metric-events-this-month',        N.eventsThisMonth);
+    setValue('metric-revenue-this-month',       N.revenueThisMonth, true);
+    setValue('metric-events-booked-this-month', N.eventsBookedThisMonth);
+    setValue('metric-ytd-revenue',              N.ytdRevenue, true);
+    setValue('metric-clicks-7d',                N.clicks7d);
+    setValue('metric-clicks-30d',               N.clicks30d);
+
+    // Click-throughs from CB_LINKS (optional)
+    makeClickable('metric-events-this-month',        'metricEventsThisMonth');
+    makeClickable('metric-revenue-this-month',       'metricRevenueThisMonth');
+    makeClickable('metric-events-booked-this-month', 'metricEventsBookedThisMonth');
+    makeClickable('metric-ytd-revenue',              'metricYTDRevenue');
+    makeClickable('metric-clicks-7d',                'metricClicks7d');
+    makeClickable('metric-clicks-30d',               'metricClicks30d');
   }
 
-  /* Top row */
-  wireMetric('metric-events-this-month',        'eventsThisMonth',       'metricEventsThisMonth');
-  wireMetric('metric-revenue-this-month',       'revenueThisMonth',      'metricRevenueThisMonth');
-  wireMetric('metric-events-booked-this-month', 'eventsBookedThisMonth', 'metricEventsBookedThisMonth');
-  wireMetric('metric-ytd-revenue',              'ytdRevenue',            'metricYTDRevenue');
-
-  /* Second row */
-  wireMetric('metric-clicks-7d',                'clicks7d',              'metricClicks7d');
-  wireMetric('metric-clicks-30d',               'clicks30d',             'metricClicks30d');
-})();
-
-/* ===================================================
-   4) LIVE METRICS: load assets/nums.json (cache-busted)
-   =================================================== */
-(async function(){
-  const paths = [
-    `/assets/nums.json?ts=${Date.now()}`,
-    `assets/nums.json?ts=${Date.now()}`
-  ];
-
-  // helpers: integer and currency formatting (no decimals)
-  const toInt = v => Number.isFinite(+v) ? Math.round(+v).toLocaleString() : String(v);
-  const toMoney = v => '$' + toInt(v);
-
-  // write helper
-  const put = (id, val) => {
-    const el = document.querySelector(`#${id} .value`);
-    if (el) el.textContent = String(val);
-  };
-
-  for (const url of paths){
+  // Pull nums.json fresh (no cache) then wire metrics
+  async function loadNums(){
     try{
-      const r = await fetch(url, {cache:'no-store'});
-      if(!r.ok){ console.warn('nums.json fetch failed', url, r.status); continue; }
+      const r = await fetch('/assets/nums.json', {cache:'no-store'});
+      if (!r.ok) return;
       const M = await r.json();
-
-      // Top row
-      put('metric-events-this-month',        toInt(M.eventsThisMonth));
-      put('metric-revenue-this-month',       toMoney(M.revenueThisMonth));
-      put('metric-events-booked-this-month', toInt(M.eventsBookedThisMonth));
-      put('metric-ytd-revenue',              toMoney(M.ytdRevenue));
-
-      // Clicks row
-      put('metric-clicks-7d',                toInt(M.clicks7d));
-      put('metric-clicks-30d',               toInt(M.clicks30d));
-
-      document.body.setAttribute('data-metrics-loaded','1');
-      return;
-    }catch(e){
-      console.error('metrics load error', url, e);
-    }
+      window.CB_NUMS = M;
+      wireMetrics();
+    }catch(_){}
   }
+
+  onReady(() => {
+    initLinksWithRetry();
+    loadNums();
+  });
 })();
