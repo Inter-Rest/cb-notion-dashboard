@@ -58,7 +58,7 @@ jobs:
             git pull --rebase origin "$GITHUB_REF_NAME" || true
 
             git add assets/nums.json nums.json || true
-            git commit -m "chore: update nums.json [skip ci]" || true
+            git commit -m "chore: update nums.json" || true
             git push origin HEAD:"$GITHUB_REF_NAME"
             echo "NO_CHANGE=false" >> "$GITHUB_ENV"
             echo "✅ pushed updated assets/nums.json"
